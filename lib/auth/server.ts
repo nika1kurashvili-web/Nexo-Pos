@@ -9,7 +9,7 @@ import { getPosAccess } from "./access";
 export const requirePosProfile = cache(async () => {
   const client = await createClient();
   if (!client) redirect("/login?error=configuration");
-  const access = await getPosAccess(client);
+  const access = await getPosAccess(client, { source: "guard", attemptId: crypto.randomUUID() });
   if (access.status !== "allowed") {
     redirect(access.status === "unauthenticated" ? "/login" : `/login?error=${access.status}`);
   }

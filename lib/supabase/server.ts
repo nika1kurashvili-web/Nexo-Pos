@@ -4,8 +4,9 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { cookieOptions, getSupabaseConfig, isPosCookie } from "./config";
 import type { Database } from "./database.types";
+import { authDiagnostic, type AuthDiagnosticContext } from "@/lib/auth/diagnostics";
 
-export async function createClient() {
+export async function createClient(actionContext?: AuthDiagnosticContext) {
   const config = getSupabaseConfig();
   if (!config) return null;
   const cookieStore = await cookies();
@@ -17,7 +18,14 @@ export async function createClient() {
       setAll: (items) => {
         try {
           items.forEach(({ name, value, options }) => cookieStore.set(name, value, options));
-        } catch {
+          if (actionContext && items.length) authDiagnostic(actionContext, "cookies.write", "success");
+        } catch (error) {
+          if (actionContext) {
+            authDiagnostic(actionContext, "cookies.write", "failed", error);
+            // Cookie writes MUST succeed in actions. Only read-only renders may
+            // defer them to middleware; otherwise an action hides a real failure.
+            throw error;
+          }
           // Server Components cannot write cookies. Middleware refreshes them.
         }
       },

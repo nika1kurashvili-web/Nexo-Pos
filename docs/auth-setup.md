@@ -129,3 +129,43 @@ verify application behavior, not live database RLS or Supabase configuration.
 References: [Supabase SSR](https://supabase.com/docs/guides/auth/server-side/creating-a-client?framework=nextjs),
 [sign-out scopes](https://supabase.com/docs/reference/javascript/auth-signout),
 [Next.js authorization](https://nextjs.org/docs/app/guides/authentication).
+
+## Diagnosing a production login failure
+
+Login submits a Server Action from `app/login/page.tsx` to
+`app/login/actions.ts`; it does not use the browser Supabase client. The
+`unavailable` message is deliberately generic. It can mean a password Auth API
+error other than status 400/422, an exception during sign-in, or a profile SELECT
+error/exception after successful Auth. Middleware and the server guard can also
+redirect to the same message when their profile checks fail. A missing row and
+an inactive row have separate messages; they are not connection errors.
+
+These failures were previously handled without logging and converted to an
+ordinary redirect, so there need not be a failed invocation or visible exception
+in Vercel. Redirects in the action are outside the catch block and are not
+misclassified as connection errors.
+
+After deploying diagnostics, reproduce once and filter **Vercel runtime logs**
+for `[nexo-pos-auth]` at that time. Include info-level logs and middleware logs,
+not just build output or HTTP 500 requests. Each entry identifies `source`,
+`attemptId`, `step`, and `outcome`. Entries within a login action share an
+attempt ID; middleware and guard invocations have their own IDs.
+
+| Step / signal | What to inspect next |
+| --- | --- |
+| `middleware` / `login.request` only, no `login` entries | The POST reached middleware; inspect any middleware failure and the Server Action request/response before assuming Supabase Auth ran. |
+| `configuration` | Presence and format flags for exactly `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`; values are never printed. `jwt` identifies syntax only, not whether it is the correct project's anon key. |
+| `client.create` | Client initialization failure, such as a malformed URL. The URL must be the project's base HTTP(S) URL, not a dashboard or REST API path. |
+| `signInWithPassword` failed | Auth endpoint rejected or could not process login. `401` / `invalid_api_key` means check that the configured public key belongs to the configured project; `429` means rate limiting. Other codes identify the Auth rejection. |
+| `getUser` failed | Server-side verification of the new or existing session failed. |
+| `pos_profiles.select` failed | Auth may have succeeded; this is a Data API/schema/permission issue, not proof of a network outage. `42501` indicates insufficient privilege, `PGRST205` a missing table in the schema cache, and `42703` an undefined column. Inspect the target project and migration before changing policies. |
+| `cookies.write` failed | The action could not persist the session. Cookie write errors are no longer silently ignored in Server Actions; read-only Server Components still defer cookie writes to middleware. |
+| `login.result` success, followed by another failure | Inspect the subsequent middleware/guard entry and cookie persistence on the redirected request. |
+
+Safe error diagnostics include known error types, codes, numeric statuses, and
+network/cookie/URL classifications. They omit raw upstream messages, details,
+hints, stacks, URLs, emails, UUIDs, passwords, cookie values, tokens, and keys.
+Share the structured diagnostic entries, never request bodies or cookies.
+
+No production root cause is established solely by the generic message. Do not
+change Vercel variables, Supabase users, or RLS until the failing step is known.

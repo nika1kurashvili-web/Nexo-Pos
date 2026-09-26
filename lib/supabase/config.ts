@@ -14,6 +14,33 @@ export function getSupabaseConfig() {
   return url && anonKey ? { url, anonKey } : null;
 }
 
+// Diagnostics only: no values, hostnames, decoded JWTs, or key fragments escape.
+// Do not silently rewrite production configuration while diagnosing a failure.
+export function getSupabaseConfigHealth() {
+  const config = getSupabaseConfig();
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  let urlShape = url ? "malformed" : "missing";
+  if (url) {
+    try {
+      const parsed = new URL(url);
+      urlShape = !["https:", "http:"].includes(parsed.protocol) ? "invalid_protocol" :
+        parsed.username || parsed.password || parsed.search || parsed.hash || parsed.pathname !== "/"
+          ? "unexpected_url_components" : "valid";
+    } catch { /* Report only the shape, never the input. */ }
+  }
+  return {
+    configured: Boolean(config),
+    urlShape,
+    urlHasWhitespace: Boolean(url && url !== url.trim()),
+    keyPresent: Boolean(key),
+    keyHasWhitespace: Boolean(key && /\s/.test(key)),
+    keyShape: !key ? "missing" : key.startsWith("sb_secret_") ? "secret_key_not_anon" :
+      key.startsWith("sb_publishable_") ? "publishable" :
+      /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(key) ? "jwt" : "unrecognized",
+  };
+}
+
 export function isPosCookie(name: string) {
   return name === POS_COOKIE_NAME || name.startsWith(`${POS_COOKIE_NAME}.`) ||
     name.startsWith(`${POS_COOKIE_NAME}-`);

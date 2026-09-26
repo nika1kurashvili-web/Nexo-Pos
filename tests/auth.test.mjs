@@ -11,6 +11,7 @@ const users = new Map();
 const sessions = new Map();
 const logoutScopes = [];
 let profileFailure = false;
+let authFailure = null;
 let logoutFailure = false;
 let app;
 let origin;
@@ -50,6 +51,7 @@ const supabase = createServer(async (req, res) => {
     let body = "";
     for await (const chunk of req) body += chunk;
     const credentials = JSON.parse(body);
+    if (authFailure) return send(authFailure.status, authFailure.body);
     const account = users.get(credentials.email);
     if (!account || credentials.password !== "test-password") return send(400, { code: "invalid_credentials", msg: "Invalid credentials" });
     return send(200, newSession(account));
@@ -65,7 +67,7 @@ const supabase = createServer(async (req, res) => {
     return;
   }
   if (url.pathname === "/rest/v1/pos_profiles") {
-    if (profileFailure) return send(503, { message: "Unavailable" });
+    if (profileFailure) return send(profileFailure.status ?? 503, profileFailure.body ?? { message: "Unavailable" });
     if (!record || url.searchParams.get("id") !== `eq.${record.user.id}`) return send(403, { message: "Forbidden" });
     return send(200, record.profile ? [record.profile] : []);
   }
@@ -244,4 +246,67 @@ test("forged session cookies cannot authenticate a user", async () => {
   client.jar.set("nexo-pos-auth", `base64-${Buffer.from(JSON.stringify({ access_token: "forged", refresh_token: "fake", expires_at: 9999999999, user: users.get("admin@example.test").user })).toString("base64url")}`);
   redirectTo(await client.request("/"), "/login");
   assert.equal(client.jar.size, 0);
+});
+
+function diagnosticsSince(offset) {
+  return [...appOutput.slice(offset).matchAll(/\[nexo-pos-auth\] (\{[^\r\n]+\})/g)]
+    .map((match) => JSON.parse(match[1]));
+}
+
+test("Auth API 401 identifies the password sign-in step without logging the key", async () => {
+  const offset = appOutput.length;
+  authFailure = { status: 401, body: { message: "Invalid API key", secret: "DO_NOT_LOG_THIS_KEY" } };
+  try {
+    redirectTo(await browser().login("admin"), "/login?error=unavailable");
+    const events = diagnosticsSince(offset);
+    const failure = events.find((entry) => entry.source === "login" && entry.step === "signInWithPassword" && entry.outcome === "failed");
+    assert.ok(failure);
+    assert.equal(failure.error.status, 401);
+    assert.equal(failure.error.category, "invalid_api_key");
+    assert.ok(events.some((entry) => entry.source === "middleware" && entry.step === "login.request"));
+    assert.ok(!appOutput.slice(offset).includes("DO_NOT_LOG_THIS_KEY"));
+  } finally { authFailure = null; }
+});
+
+for (const [status, code] of [[403, "42501"], [404, "PGRST205"], [400, "42703"]]) {
+  test(`profile failure ${code} is logged separately after successful Auth`, async () => {
+    const offset = appOutput.length;
+    profileFailure = { status, body: { code, message: "private upstream details DO_NOT_LOG_PROFILE_SECRET", details: "private", hint: "private" } };
+    try {
+      redirectTo(await browser().login("admin"), "/login?error=unavailable");
+      const events = diagnosticsSince(offset);
+      const failure = events.find((entry) => entry.source === "login" && entry.step === "pos_profiles.select" && entry.outcome === "failed");
+      assert.ok(failure);
+      assert.equal(failure.error.code, code);
+      assert.equal(failure.error.status, status);
+      assert.ok(events.some((entry) => entry.attemptId === failure.attemptId && entry.step === "signInWithPassword" && entry.outcome === "success"));
+      assert.ok(events.some((entry) => entry.attemptId === failure.attemptId && entry.step === "getUser" && entry.outcome === "success"));
+      assert.ok(!appOutput.slice(offset).includes("DO_NOT_LOG_PROFILE_SECRET"));
+    } finally { profileFailure = false; }
+  });
+}
+
+test("middleware profile failures on /login identify middleware as the source", async () => {
+  const client = browser();
+  redirectTo(await client.login("admin"), "/");
+  const offset = appOutput.length;
+  profileFailure = { status: 403, body: { code: "42501", message: "permission denied" } };
+  try {
+    redirectTo(await client.request("/login"), "/login?error=unavailable");
+    assert.equal(client.jar.size, 0);
+    assert.ok(diagnosticsSince(offset).some((entry) => entry.source === "middleware" && entry.step === "pos_profiles.select" && entry.error?.code === "42501"));
+  } finally { profileFailure = false; }
+});
+
+test("successful redirects are not diagnosed as sign-in exceptions; logs exclude credentials", async () => {
+  const offset = appOutput.length;
+  redirectTo(await browser().login("admin"), "/");
+  const events = diagnosticsSince(offset).filter((entry) => entry.source === "login");
+  assert.ok(events.some((entry) => entry.step === "cookies.write" && entry.outcome === "success"));
+  assert.ok(events.some((entry) => entry.step === "login.result" && entry.outcome === "success"));
+  assert.ok(!events.some((entry) => entry.outcome === "failed"));
+  const logs = appOutput.slice(offset);
+  for (const secret of ["admin@example.test", "test-password", "test-anon-key-not-a-secret", "test-signature", "refresh-00000000"]) {
+    assert.ok(!logs.includes(secret), "Auth logs must exclude credentials and identifiers");
+  }
 });
