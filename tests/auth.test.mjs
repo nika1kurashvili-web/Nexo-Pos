@@ -16,6 +16,8 @@ let logoutFailure = false;
 let app;
 let origin;
 let appOutput = "";
+const registerId = "10000000-0000-4000-8000-000000000001";
+const registerSessions = [];
 
 for (const [index, name, role, active] of [
   [1, "admin", "admin", true],
@@ -70,6 +72,24 @@ const supabase = createServer(async (req, res) => {
     if (profileFailure) return send(profileFailure.status ?? 503, profileFailure.body ?? { message: "Unavailable" });
     if (!record || url.searchParams.get("id") !== `eq.${record.user.id}`) return send(403, { message: "Forbidden" });
     return send(200, record.profile ? [record.profile] : []);
+  }
+  if (url.pathname === "/rest/v1/pos_register_sessions") return send(200, registerSessions.filter((s) => s.cashier_id === record?.user.id));
+  if (url.pathname === "/rest/v1/pos_registers") return send(200, [{ id: registerId, name: "მთავარი სალარო", active: true }]);
+  if (["/rest/v1/pos_business_customers", "/rest/v1/pos_customer_prices", "/rest/v1/pos_sales", "/rest/v1/pos_customer_transactions"].includes(url.pathname)) return send(200, []);
+  if (url.pathname === "/rest/v1/pos_payment_methods") return send(200, [{code:"cash", name:"ნაღდი", active:true}]);
+  if (["/rest/v1/rpc/pos_open_register", "/rest/v1/rpc/pos_close_register"].includes(url.pathname)) {
+    if (!record) return send(401, {});
+    let body = "";
+    for await (const chunk of req) body += chunk;
+    const args = JSON.parse(body);
+    if (url.pathname.endsWith("pos_open_register")) {
+      const id = "20000000-0000-4000-8000-000000000001";
+      registerSessions.push({id, register_id:registerId,cashier_id:record.user.id,opened_at:new Date().toISOString(),opening_cash:args.p_cash,status:"open",expected_closing_cash:null,actual_closing_cash:null,cash_difference:null});
+      return send(200,id);
+    }
+    const session = registerSessions.find((s) => s.id === args.p_session);
+    Object.assign(session,{status:"closed",expected_closing_cash:session.opening_cash,actual_closing_cash:args.p_actual,cash_difference:"0.00"});
+    return send(200,session.opening_cash);
   }
   return send(404, { message: `Unexpected path: ${url.pathname}` });
 });
@@ -127,11 +147,11 @@ function browser() {
       }
       return response;
     },
-    async submit(path, values = {}) {
+    async submit(path, values = {}, formIndex = 0) {
       const page = await this.request(path);
       assert.equal(page.status, 200);
       const html = await page.text();
-      const action = html.match(/name="(\$ACTION_ID_[^"]+)"/);
+      const action = [...html.matchAll(/name="(\$ACTION_ID_[^"]+)"/g)][formIndex];
       assert.ok(action, "Server Action form must be present");
       const body = new FormData();
       body.set(action[1], "");
@@ -309,4 +329,31 @@ test("successful redirects are not diagnosed as sign-in exceptions; logs exclude
   for (const secret of ["admin@example.test", "test-password", "test-anon-key-not-a-secret", "test-signature", "refresh-00000000"]) {
     assert.ok(!logs.includes(secret), "Auth logs must exclude credentials and identifiers");
   }
+});
+
+test("Phase 1 admin screens render while cashier direct access is denied", async () => {
+  const admin = browser(), cashier = browser();
+  redirectTo(await admin.login("admin"), "/");
+  redirectTo(await cashier.login("cashier"), "/");
+  for (const [path,title] of [["/customers","ბიზნეს კლიენტები"],["/registers","სალაროების მართვა"],["/payment-methods","გადახდის მეთოდები"]]) {
+    const page = await admin.request(path);
+    assert.equal(page.status,200);
+    assert.ok((await page.text()).includes(title));
+    const denied = await cashier.request(path);
+    const body = await denied.text();
+    assert.ok([303,307].includes(denied.status) || body.includes("NEXT_REDIRECT"));
+    assert.ok(!body.includes("$ACTION_ID_" + "undefined"));
+  }
+});
+
+test("cashier can submit opening and closing forms and see session history", async () => {
+  const client = browser();
+  redirectTo(await client.login("cashier"), "/");
+  redirectTo(await client.submit("/",{register_id:registerId,opening_cash:"25.00"},1),"/?saved=1");
+  const html = await (await client.request("/")).text();
+  assert.ok(html.includes("მიმდინარე სესია"));
+  redirectTo(await client.submit("/",{session_id:registerSessions[0].id,actual_cash:"25.00",note:"დათვლილია"},1),"/?saved=1");
+  const closed = await (await client.request("/")).text();
+  assert.ok(closed.includes("დახურული"));
+  assert.ok(closed.includes("სალაროს გახსნა"));
 });

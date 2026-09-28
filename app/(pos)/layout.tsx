@@ -23,6 +23,9 @@ export default async function PosLayout({ children }: { children: React.ReactNod
           <Link href="/">სალარო</Link>
           <Link href="/sales">გაყიდვები</Link>
           {profile.role === "admin" && <>
+            <Link href="/customers">ბიზნეს კლიენტები</Link>
+            <Link href="/registers">სალაროები</Link>
+            <Link href="/payment-methods">გადახდის მეთოდები</Link>
             <Link href="/reports">რეპორტები</Link>
             <Link href="/employees">თანამშრომლები</Link>
           </>}

@@ -25,27 +25,18 @@ The migration does not modify `profiles`, `orders`, `order_items`, `products`,
 `product_variants`, their policies, or existing Auth triggers. No catalog schema
 is assumed or queried in this version.
 
-## First POS admin
+## First POS admin and future employees
 
-1. In **Supabase → Authentication → Users**, create the intended user with an
-   email and a strong password. Ensure the email is confirmed for password login
-   (use the dashboard's auto-confirm option if offered).
-2. Copy that Auth user's UUID.
-3. Replace both placeholders and run this SQL in the SQL Editor:
+Do not use the former dashboard-create-plus-POS-insert recipe: the legacy shared
+Auth trigger grants an active Orders profile to every new Auth user.
+Review [explicit application membership and provisioning](user-provisioning.md).
+After profile migration 001, deploy the separate shared-Auth prerequisite before
+creating further POS accounts; financial migration 002 remains on hold.
 
-```sql
-insert into public.pos_profiles (id, full_name, role, active)
-values ('AUTH_USER_UUID'::uuid, 'ADMIN_FULL_NAME', 'admin', true);
-```
-
-For a cashier, use `cashier` instead of `admin`. If an email already exists in
-shared Auth, use its existing UUID; do not reset its password or create a
-duplicate account just to grant POS access.
-
-An Auth account or an order-management `profiles` row alone grants no POS access.
-This migration does not automatically populate either profile table. Review any
-existing shared Auth provisioning hooks when creating users; those hooks are
-not changed here.
+Use the trusted provisioning command with explicit POS admin/cashier membership.
+Orders employees use the same command with explicit Orders access. Dual access
+must be requested deliberately. Existing accounts/profiles are not migrated or
+cleaned up automatically. No new web/Vercel runtime secret is required.
 
 ## Security behavior
 

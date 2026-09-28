@@ -69,6 +69,22 @@ button:disabled { cursor: wait; opacity: 0.65; }
 .sidebar a:hover { background: #edf1fc; color: #274bc4; }
 .main-content { padding: 2.5rem; min-width: 0; }
 .panel { padding: 2rem; background: white; border: 1px solid #e1e5ec; border-radius: 0.75rem; }
+.panel + .panel { margin-top: 1.5rem; }
+.panel h2 { font-size: 1.2rem; margin-top: 0; }
+.data-form { display: grid; gap: 1rem; max-width: 38rem; margin-top: 1rem; }
+.data-form label, .inline-form label { display: grid; gap: 0.5rem; }
+.data-form input, .data-form select, .data-form textarea, .inline-form input { font: inherit; color: inherit; padding: 0.7rem; border: 1px solid #aab3c2; border-radius: 0.4rem; width: 100%; background: white; }
+.data-form textarea { min-height: 5rem; resize: vertical; }
+label.check { display: flex; gap: 0.6rem; align-items: center; }
+label.check input { width: 1.2rem; height: 1.2rem; }
+.inline-form { display: flex; align-items: center; flex-wrap: wrap; gap: 1rem; padding: 1rem 0; border-bottom: 1px solid #e1e5ec; }
+.table-scroll { overflow-x: auto; margin: 1rem 0; }
+table { border-collapse: collapse; width: 100%; text-align: left; }
+th, td { padding: 0.8rem; border-bottom: 1px solid #e1e5ec; }
+td a { color: #274bc4; text-decoration: underline; }
+.success { background: #e8f5ed; color: #205f36; }
+dt { color: #586174; } dd { margin: 0.4rem 0 1rem; font-weight: 600; }
+summary { cursor: pointer; margin: 1rem 0; }
 .skip-link { position: fixed; top: -10rem; left: 1rem; background: white; padding: 1rem; z-index: 10; }
 .skip-link:focus { top: 1rem; }
 @media (max-width: 760px) {

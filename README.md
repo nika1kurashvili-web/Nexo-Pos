@@ -61,9 +61,20 @@ POS admin. See [setup, security, and verification](docs/auth-setup.md).
 - `supabase/migrations/`: POS-only SQL migration
 - `tests/auth.test.mjs`: production-server authentication integration tests
 
+Phase 1 adds business customers, customer wholesale pricing, register sessions,
+payment methods, atomic sale/payment RPCs and a debt ledger. Before deploying,
+review [Phase 1 setup and full database inventory](docs/phase1.md). Do not apply
+`202609260002_pos_phase1.sql` yet: run the read-only
+`supabase/inspection/phase1_write_isolation_preflight.sql`, review production
+authorization, and verify concurrent operations in staging first. No migration
+is applied automatically. The existing profile migration must remain unchanged.
+
 `/` and `/sales` require an active POS profile. `/reports` and `/employees` are
 admin-only placeholders. Existing order-management users are not authorized
 unless they also have an active `pos_profiles` row.
 
-No sales tables, cart, payments, inventory, receipt printing, reports logic,
-or employee creation UI is implemented.
+`/customers`, `/registers`, and `/payment-methods` are admin-only operational
+screens. The final cashier cart, Excel file upload, inventory, receipt printing,
+returns, reports logic, and employee creation UI remain future work.
+
+Future employee creation must use [trusted explicit membership provisioning](docs/user-provisioning.md). The separate shared-Auth prerequisite goes after profile migration 001 and before financial migration 002; ordinary unmarked Auth accounts receive no application membership.
