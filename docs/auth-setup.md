@@ -1,5 +1,32 @@
 # POS authentication setup
 
+## Phase 2A application behavior
+
+The home page is an account dashboard showing Nexo POS, the authenticated user's
+full name, Georgian role label plus `admin`/`cashier`, and a logout action in the
+header. Register/cart/sales controls are not part of this home page. Previously
+existing Phase 1 routes remain server-protected but are not linked in this shell.
+
+Login uses the existing Server Action, not a browser password request. The
+pending submit button is disabled. Middleware refreshes SSR cookies, verifies
+identity with `getUser()`, then queries only `public.pos_profiles` by verified
+user ID. The page guard repeats authorization server-side. Orders `profiles`,
+Orders roles, and Auth metadata never grant POS membership. Missing, inactive or
+invalid-role membership signs out and displays:
+`ამ მომხმარებელს POS სისტემაზე წვდომა არ აქვს.`
+
+The two existing public environment variables are unchanged. Configuration
+validation rejects malformed base URLs, secret keys and legacy JWT keys whose
+role is not `anon`. Do not place any secret in a `NEXT_PUBLIC_*` variable: Next.js
+may embed public variables during build, before runtime validation can help.
+
+No SQL, migration, provisioning, or shared Orders security changes are required
+by Phase 2A. Existing database setup/provisioning information below is background,
+not an instruction to rerun migrations. For manual verification, use existing
+staging POS admin/cashier accounts and an Orders-only account; check login,
+denial, refresh and logout before deploying the application through your normal
+release process. Do not change the shared Auth Site URL for this password flow.
+
 ## Apply the migration
 
 Review and run `supabase/migrations/202609260001_create_pos_profiles.sql` once
@@ -129,7 +156,7 @@ Login submits a Server Action from `app/login/page.tsx` to
 error other than status 400/422, an exception during sign-in, or a profile SELECT
 error/exception after successful Auth. Middleware and the server guard can also
 redirect to the same message when their profile checks fail. A missing row and
-an inactive row have separate messages; they are not connection errors.
+an inactive row have the same access-denied message; neither is a connection error.
 
 These failures were previously handled without logging and converted to an
 ordinary redirect, so there need not be a failed invocation or visible exception

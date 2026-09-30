@@ -19,8 +19,8 @@ export default async function LoginPage({ searchParams }: {
         <div className="brand" lang="en">Nexo POS</div>
         <p className="muted">მოლარის სისტემა</p>
         <h1 id="login-title">სისტემაში შესვლა</h1>
-        {message && <p className="notice error" role="alert">{message}</p>}
-        <form action={login} className="login-form">
+        {message && <p id="login-error" className="notice error" role="alert">{message}</p>}
+        <form action={login} className="login-form" aria-describedby={message ? "login-error" : undefined}>
           <label htmlFor="email">ელფოსტა</label>
           <input id="email" name="email" type="email" autoComplete="username" required maxLength={254} autoCapitalize="none" spellCheck={false} />
           <label htmlFor="password">პაროლი</label>

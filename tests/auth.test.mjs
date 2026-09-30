@@ -13,6 +13,8 @@ const logoutScopes = [];
 let profileFailure = false;
 let authFailure = null;
 let logoutFailure = false;
+let ordersQueries = 0;
+let refreshes = 0;
 let app;
 let origin;
 let appOutput = "";
@@ -25,6 +27,10 @@ for (const [index, name, role, active] of [
   [3, "missing", null, true],
   [4, "inactive", "cashier", false],
   [5, "invalid", "manager", true],
+  [6, "orders-admin", null, true],
+  [7, "orders-operator", null, true],
+  [8, "orders-manager", null, true],
+  [9, "metadata-admin", null, true],
 ]) {
   const id = `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`;
   users.set(`${name}@example.test`, {
@@ -53,6 +59,11 @@ const supabase = createServer(async (req, res) => {
     let body = "";
     for await (const chunk of req) body += chunk;
     const credentials = JSON.parse(body);
+    if (url.searchParams.get("grant_type") === "refresh_token") {
+      refreshes++;
+      const account = [...users.values()].find(r => `refresh-${r.user.id}` === credentials.refresh_token);
+      return account ? send(200, newSession(account)) : send(400, { code: "refresh_token_not_found" });
+    }
     if (authFailure) return send(authFailure.status, authFailure.body);
     const account = users.get(credentials.email);
     if (!account || credentials.password !== "test-password") return send(400, { code: "invalid_credentials", msg: "Invalid credentials" });
@@ -72,6 +83,10 @@ const supabase = createServer(async (req, res) => {
     if (profileFailure) return send(profileFailure.status ?? 503, profileFailure.body ?? { message: "Unavailable" });
     if (!record || url.searchParams.get("id") !== `eq.${record.user.id}`) return send(403, { message: "Forbidden" });
     return send(200, record.profile ? [record.profile] : []);
+  }
+  if (url.pathname === "/rest/v1/profiles") {
+    ordersQueries++;
+    return send(200, [{ id: record?.user.id, role: "admin", active: true }]);
   }
   if (url.pathname === "/rest/v1/pos_register_sessions") return send(200, registerSessions.filter((s) => s.cashier_id === record?.user.id));
   if (url.pathname === "/rest/v1/pos_registers") return send(200, [{ id: registerId, name: "მთავარი სალარო", active: true }]);
@@ -176,14 +191,14 @@ test("all application routes redirect unauthenticated visitors", async () => {
   assert.match(await login.text(), /ელფოსტა/);
 });
 
-test("active admin can log in, see Georgian role and all placeholders, then log out", async () => {
+test("active admin can log in, see the account dashboard, then log out", async () => {
   const client = browser();
   redirectTo(await client.login("admin"), "/");
   const home = await client.request("/");
   assert.equal(home.status, 200);
   assert.match(home.headers.get("cache-control"), /no-store/);
   const html = await home.text();
-  for (const text of ["Test admin", "ადმინისტრატორი", "სალაროს მოდული მზადდება", "გამოსვლა", "რეპორტები", "თანამშრომლები"]) assert.ok(html.includes(text));
+  for (const text of ["Test admin", "ადმინისტრატორი", "Nexo POS", "გამოსვლა", "მომხმარებელი", "admin"]) assert.ok(html.includes(text));
   for (const route of ["/sales", "/reports", "/employees"]) assert.equal((await client.request(route)).status, 200);
   redirectTo(await client.request("/login"), "/");
   redirectTo(await client.submit("/"), "/login");
@@ -209,9 +224,45 @@ test("cashier role renders and direct admin routes are denied", async () => {
   }
 });
 
+for (const name of ["orders-admin", "orders-operator", "orders-manager", "metadata-admin"]) {
+  test(`${name} cannot gain POS access without pos_profiles`, async () => {
+    const account = users.get(`${name}@example.test`);
+    account.user.user_metadata = { role: "admin", active: true, pos_role: "admin" };
+    account.user.app_metadata = { orders_role: name, pos_role: "admin" };
+    const client = browser();
+    redirectTo(await client.login(name), "/login?error=denied");
+    assert.equal(client.jar.size, 0);
+    assert.equal(ordersQueries, 0, "POS authorization must never query Orders profiles");
+  });
+}
+
+test("SSR refresh propagates cookies and keeps active POS user signed in", async () => {
+  const client = browser();
+  const session = newSession(users.get("cashier@example.test"));
+  session.expires_at = Math.floor(Date.now() / 1000) - 60;
+  const expired = `base64-${Buffer.from(JSON.stringify(session)).toString("base64url")}`;
+  client.jar.set("nexo-pos-auth", expired);
+  const beforeRefresh = refreshes;
+  const response = await client.request("/");
+  assert.equal(response.status, 200);
+  assert.ok((await response.text()).includes("Test cashier"));
+  assert.ok(refreshes > beforeRefresh);
+  assert.notEqual(client.jar.get("nexo-pos-auth"), expired);
+  assert.equal((await client.request("/")).status, 200);
+});
+
+test("account dashboard has no register or sales forms", async () => {
+  const client = browser();
+  redirectTo(await client.login("cashier"), "/");
+  const html = await (await client.request("/")).text();
+  assert.equal([...html.matchAll(/name="\$ACTION_ID_/g)].length, 1, "Only logout is available");
+  assert.ok(!html.includes('name="opening_cash"'));
+  assert.ok(!html.includes('name="actual_cash"'));
+});
+
 for (const [name, reason, message] of [
   ["missing", "denied", "ამ მომხმარებელს POS სისტემაზე წვდომა არ აქვს."],
-  ["inactive", "inactive", "მომხმარებელი გათიშულია."],
+  ["inactive", "inactive", "ამ მომხმარებელს POS სისტემაზე წვდომა არ აქვს."],
   ["invalid", "denied", "ამ მომხმარებელს POS სისტემაზე წვდომა არ აქვს."],
 ]) {
   test(`${name} POS profile is denied and the new session is cleared`, async () => {
@@ -344,16 +395,4 @@ test("Phase 1 admin screens render while cashier direct access is denied", async
     assert.ok([303,307].includes(denied.status) || body.includes("NEXT_REDIRECT"));
     assert.ok(!body.includes("$ACTION_ID_" + "undefined"));
   }
-});
-
-test("cashier can submit opening and closing forms and see session history", async () => {
-  const client = browser();
-  redirectTo(await client.login("cashier"), "/");
-  redirectTo(await client.submit("/",{register_id:registerId,opening_cash:"25.00"},1),"/?saved=1");
-  const html = await (await client.request("/")).text();
-  assert.ok(html.includes("მიმდინარე სესია"));
-  redirectTo(await client.submit("/",{session_id:registerSessions[0].id,actual_cash:"25.00",note:"დათვლილია"},1),"/?saved=1");
-  const closed = await (await client.request("/")).text();
-  assert.ok(closed.includes("დახურული"));
-  assert.ok(closed.includes("სალაროს გახსნა"));
 });

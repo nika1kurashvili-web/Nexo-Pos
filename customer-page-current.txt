@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+﻿import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/auth/server";
 import { money, posClient } from "@/lib/pos/server";
 import {
@@ -7,7 +7,6 @@ import {
   SaveButton,
 } from "@/app/components/pos-forms";
 import {
-  importCustomerPricesExcel,
   recordCustomerRepayment,
   saveCustomer,
   saveCustomerPrice,
@@ -157,7 +156,7 @@ export default async function CustomerPage({
       />
 
       <section className="panel">
-        <h2>კლიენტის მონაცემები</h2>
+        <h2>áƒ™áƒšáƒ˜áƒ”áƒœáƒ¢áƒ˜áƒ¡ áƒ›áƒáƒœáƒáƒªáƒ”áƒ›áƒ”áƒ‘áƒ˜</h2>
 
         <form
           action={saveCustomer}
@@ -170,22 +169,22 @@ export default async function CustomerPage({
 
       <section className="panel">
         <h2>
-          ინდივიდუალური საბითუმო ფასები
+          áƒ˜áƒœáƒ“áƒ˜áƒ•áƒ˜áƒ“áƒ£áƒáƒšáƒ£áƒ áƒ˜ áƒ¡áƒáƒ‘áƒ˜áƒ—áƒ£áƒ›áƒ áƒ¤áƒáƒ¡áƒ”áƒ‘áƒ˜
         </h2>
 
         <p>
-          ფასის არქონისას საცალო ფასი
-          ავტომატურად არ გამოიყენება.
-          ნაჩვენებია მაქსიმუმ 200 ფასი.
+          áƒ¤áƒáƒ¡áƒ˜áƒ¡ áƒáƒ áƒ¥áƒáƒœáƒ˜áƒ¡áƒáƒ¡ áƒ¡áƒáƒªáƒáƒšáƒ áƒ¤áƒáƒ¡áƒ˜
+          áƒáƒ•áƒ¢áƒáƒ›áƒáƒ¢áƒ£áƒ áƒáƒ“ áƒáƒ  áƒ’áƒáƒ›áƒáƒ˜áƒ§áƒ”áƒœáƒ”áƒ‘áƒ.
+          áƒœáƒáƒ©áƒ•áƒ”áƒœáƒ”áƒ‘áƒ˜áƒ áƒ›áƒáƒ¥áƒ¡áƒ˜áƒ›áƒ£áƒ› 200 áƒ¤áƒáƒ¡áƒ˜.
         </p>
 
         <div className="table-scroll">
           <table>
             <thead>
               <tr>
-                <th>ტიპი</th>
-                <th>კატალოგის ID</th>
-                <th>ფასი</th>
+                <th>áƒ¢áƒ˜áƒžáƒ˜</th>
+                <th>áƒ™áƒáƒ¢áƒáƒšáƒáƒ’áƒ˜áƒ¡ ID</th>
+                <th>áƒ¤áƒáƒ¡áƒ˜</th>
               </tr>
             </thead>
 
@@ -194,8 +193,8 @@ export default async function CustomerPage({
                 <tr key={price.id}>
                   <td>
                     {price.variant_id !== null
-                      ? "ვარიანტი"
-                      : "პროდუქტი"}
+                      ? "áƒ•áƒáƒ áƒ˜áƒáƒœáƒ¢áƒ˜"
+                      : "áƒžáƒ áƒáƒ“áƒ£áƒ¥áƒ¢áƒ˜"}
                   </td>
 
                   <td>
@@ -216,7 +215,7 @@ export default async function CustomerPage({
 
         <details>
           <summary>
-            ფასის ხელით მითითება
+            áƒ¤áƒáƒ¡áƒ˜áƒ¡ áƒ®áƒ”áƒšáƒ˜áƒ— áƒ›áƒ˜áƒ—áƒ˜áƒ—áƒ”áƒ‘áƒ
           </summary>
 
           <form
@@ -230,12 +229,12 @@ export default async function CustomerPage({
             />
 
             <label>
-              SKU / ბარკოდი
+              SKU / áƒ‘áƒáƒ áƒ™áƒáƒ“áƒ˜
               <input name="sku" required />
             </label>
 
             <label>
-              საბითუმო ფასი
+              áƒ¡áƒáƒ‘áƒ˜áƒ—áƒ£áƒ›áƒ áƒ¤áƒáƒ¡áƒ˜
               <input
                 name="price"
                 type="number"
@@ -249,76 +248,41 @@ export default async function CustomerPage({
           </form>
         </details>
 
-       <details>
-  <summary>
-    Excel-იდან ფასების ატვირთვა
-  </summary>
-
-  <form
-    action={importCustomerPricesExcel}
-    className="data-form"
-  >
-    <input
-      type="hidden"
-      name="customer_id"
-      value={id}
-    />
-
-    <label>
-      Excel ფაილი
-      <input
-        type="file"
-        name="file"
-        accept=".xlsx,.xls"
-        required
-      />
-    </label>
-
-    <p>
-      Excel-ის პირველ ფურცელში უნდა იყოს
-      სვეტები: <strong>SKU</strong> და{" "}
-      <strong>ფასი</strong>.
-    </p>
-
-    <p>
-      მაგალითად: SKU = ABC-001, ფასი = 25.50
-    </p>
-
-    <SaveButton>
-      Excel-ის ატვირთვა
-    </SaveButton>
-  </form>
-</details>
+        <p>
+          Excel áƒáƒ¢áƒ•áƒ˜áƒ áƒ—áƒ•áƒ áƒ“áƒ SKU-áƒ˜áƒ— áƒ¤áƒáƒ¡áƒ”áƒ‘áƒ˜áƒ¡
+          áƒ›áƒáƒ¡áƒáƒ‘áƒ áƒ˜áƒ•áƒ˜ áƒ›áƒáƒ áƒ—áƒ•áƒ áƒ¨áƒ”áƒ›áƒ“áƒ”áƒ’ áƒ”áƒ¢áƒáƒžáƒ–áƒ”
+          áƒ“áƒáƒ”áƒ›áƒáƒ¢áƒ”áƒ‘áƒ.
+        </p>
       </section>
 
       <section className="panel">
-        <h2>დავალიანება</h2>
+        <h2>áƒ“áƒáƒ•áƒáƒšáƒ˜áƒáƒœáƒ”áƒ‘áƒ</h2>
 
         <p>
-          მიმდინარე ნაშთი:{" "}
+          áƒ›áƒ˜áƒ›áƒ“áƒ˜áƒœáƒáƒ áƒ” áƒœáƒáƒ¨áƒ—áƒ˜:{" "}
           <strong>
             {balanceError
-              ? "—"
+              ? "â€”"
               : money(balance)}
           </strong>
         </p>
 
-        <h3>ღია დავალიანებები</h3>
+        <h3>áƒ¦áƒ˜áƒ áƒ“áƒáƒ•áƒáƒšáƒ˜áƒáƒœáƒ”áƒ‘áƒ”áƒ‘áƒ˜</h3>
 
         {!debtSales.length ? (
           <p>
-            ამ კლიენტს ღია დავალიანება არ აქვს.
+            áƒáƒ› áƒ™áƒšáƒ˜áƒ”áƒœáƒ¢áƒ¡ áƒ¦áƒ˜áƒ áƒ“áƒáƒ•áƒáƒšáƒ˜áƒáƒœáƒ”áƒ‘áƒ áƒáƒ  áƒáƒ¥áƒ•áƒ¡.
           </p>
         ) : (
           <div className="table-scroll">
             <table>
               <thead>
                 <tr>
-                  <th>გაყიდვა</th>
-                  <th>თარიღი</th>
-                  <th>გაყიდვის ჯამი</th>
-                  <th>დარჩენილი ვალი</th>
-                  <th>დაფარვა</th>
+                  <th>áƒ’áƒáƒ§áƒ˜áƒ“áƒ•áƒ</th>
+                  <th>áƒ—áƒáƒ áƒ˜áƒ¦áƒ˜</th>
+                  <th>áƒ’áƒáƒ§áƒ˜áƒ“áƒ•áƒ˜áƒ¡ áƒ¯áƒáƒ›áƒ˜</th>
+                  <th>áƒ“áƒáƒ áƒ©áƒ”áƒœáƒ˜áƒšáƒ˜ áƒ•áƒáƒšáƒ˜</th>
+                  <th>áƒ“áƒáƒ¤áƒáƒ áƒ•áƒ</th>
                 </tr>
               </thead>
 
@@ -351,7 +315,7 @@ export default async function CustomerPage({
                     <td>
                       {!session ? (
                         <span>
-                          ჯერ გახსენი სალარო
+                          áƒ¯áƒ”áƒ  áƒ’áƒáƒ®áƒ¡áƒ”áƒœáƒ˜ áƒ¡áƒáƒšáƒáƒ áƒ
                         </span>
                       ) : (
                         <form
@@ -385,7 +349,7 @@ export default async function CustomerPage({
                           />
 
                           <label>
-                            თანხა
+                            áƒ—áƒáƒœáƒ®áƒ
                             <input
                               type="number"
                               name="amount"
@@ -402,7 +366,7 @@ export default async function CustomerPage({
                           </label>
 
                           <label>
-                            მეთოდი
+                            áƒ›áƒ”áƒ—áƒáƒ“áƒ˜
                             <select
                               name="method"
                               required
@@ -425,7 +389,7 @@ export default async function CustomerPage({
                           </label>
 
                           <SaveButton>
-                            დაფარვა
+                            áƒ“áƒáƒ¤áƒáƒ áƒ•áƒ
                           </SaveButton>
                         </form>
                       )}
@@ -439,21 +403,21 @@ export default async function CustomerPage({
 
         {!session && debtSales.length > 0 && (
           <p>
-            დავალიანების მისაღებად ამ
-            მომხმარებლის სახელზე ჯერ სალარო
-            უნდა იყოს გახსნილი.
+            áƒ“áƒáƒ•áƒáƒšáƒ˜áƒáƒœáƒ”áƒ‘áƒ˜áƒ¡ áƒ›áƒ˜áƒ¡áƒáƒ¦áƒ”áƒ‘áƒáƒ“ áƒáƒ›
+            áƒ›áƒáƒ›áƒ®áƒ›áƒáƒ áƒ”áƒ‘áƒšáƒ˜áƒ¡ áƒ¡áƒáƒ®áƒ”áƒšáƒ–áƒ” áƒ¯áƒ”áƒ  áƒ¡áƒáƒšáƒáƒ áƒ
+            áƒ£áƒœáƒ“áƒ áƒ˜áƒ§áƒáƒ¡ áƒ’áƒáƒ®áƒ¡áƒœáƒ˜áƒšáƒ˜.
           </p>
         )}
 
-        <h3>ბოლო 50 ოპერაცია</h3>
+        <h3>áƒ‘áƒáƒšáƒ 50 áƒáƒžáƒ”áƒ áƒáƒªáƒ˜áƒ</h3>
 
         <div className="table-scroll">
           <table>
             <thead>
               <tr>
-                <th>თარიღი</th>
-                <th>ოპერაცია</th>
-                <th>თანხა</th>
+                <th>áƒ—áƒáƒ áƒ˜áƒ¦áƒ˜</th>
+                <th>áƒáƒžáƒ”áƒ áƒáƒªáƒ˜áƒ</th>
+                <th>áƒ—áƒáƒœáƒ®áƒ</th>
               </tr>
             </thead>
 
@@ -474,11 +438,11 @@ export default async function CustomerPage({
                     <td>
                       {transaction.kind ===
                       "sale_charge"
-                        ? "გაყიდვა"
+                        ? "áƒ’áƒáƒ§áƒ˜áƒ“áƒ•áƒ"
                         : transaction.kind ===
                             "repayment"
-                          ? "ვალის დაფარვა"
-                          : "გადახდა"}
+                          ? "áƒ•áƒáƒšáƒ˜áƒ¡ áƒ“áƒáƒ¤áƒáƒ áƒ•áƒ"
+                          : "áƒ’áƒáƒ“áƒáƒ®áƒ“áƒ"}
                     </td>
 
                     <td>

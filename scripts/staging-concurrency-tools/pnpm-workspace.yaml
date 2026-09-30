@@ -1,0 +1,4 @@
+# Keep this manual test tool independent of the parent application's workspace.
+# pnpm --dir changes the working directory but still discovers workspace roots.
+packages:
+  - '.'

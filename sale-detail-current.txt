@@ -1,0 +1,208 @@
+﻿import Link from "next/link";
+import { notFound } from "next/navigation";
+import { requirePosProfile } from "@/lib/auth/server";
+import { posClient, money } from "@/lib/pos/server";
+import { Notice } from "@/app/components/pos-forms";
+
+export const dynamic = "force-dynamic";
+
+export default async function SaleDetailsPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  await requirePosProfile();
+
+  const { id } = await params;
+  const client = await posClient();
+
+  const [
+    { data: sale, error: saleError },
+    { data: items, error: itemsError },
+    { data: payments, error: paymentsError },
+  ] = await Promise.all([
+    client
+      .from("pos_sales")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle(),
+
+    client
+      .from("pos_sale_items")
+      .select("*")
+      .eq("sale_id", id)
+      .order("line_number"),
+
+    client
+      .from("pos_payments")
+      .select("*")
+      .eq("sale_id", id)
+      .order("created_at"),
+  ]);
+
+  if (!sale && !saleError) {
+    notFound();
+  }
+
+  return (
+    <>
+      <p>
+        <Link href="/sales">â† áƒ’áƒáƒ§áƒ˜áƒ“áƒ•áƒ”áƒ‘áƒ–áƒ” áƒ“áƒáƒ‘áƒ áƒ£áƒœáƒ”áƒ‘áƒ</Link>
+      </p>
+
+      <h1>áƒ’áƒáƒ§áƒ˜áƒ“áƒ•áƒ â„–{sale?.sale_number}</h1>
+
+      <Notice loadError={Boolean(saleError || itemsError || paymentsError)} />
+
+      {sale && (
+        <>
+          <section className="panel">
+            <h2>áƒ’áƒáƒ§áƒ˜áƒ“áƒ•áƒ˜áƒ¡ áƒ˜áƒœáƒ¤áƒáƒ áƒ›áƒáƒªáƒ˜áƒ</h2>
+
+            <dl className="profile-summary">
+              <dt>áƒœáƒáƒ›áƒ”áƒ áƒ˜</dt>
+              <dd>#{sale.sale_number}</dd>
+
+              <dt>áƒ—áƒáƒ áƒ˜áƒ¦áƒ˜</dt>
+              <dd>
+                {new Date(sale.created_at).toLocaleString("ka-GE")}
+              </dd>
+
+              <dt>áƒ›áƒáƒšáƒáƒ áƒ”</dt>
+              <dd>{sale.cashier_name}</dd>
+
+              <dt>áƒ¢áƒ˜áƒžáƒ˜</dt>
+              <dd>
+                {sale.sale_type === "retail"
+                  ? "áƒ¡áƒáƒªáƒáƒšáƒ"
+                  : "áƒ¡áƒáƒ‘áƒ˜áƒ—áƒ£áƒ›áƒ"}
+              </dd>
+
+              <dt>áƒ™áƒšáƒ˜áƒ”áƒœáƒ¢áƒ˜</dt>
+              <dd>{sale.customer_name ?? "áƒ¡áƒáƒªáƒáƒšáƒ áƒ™áƒšáƒ˜áƒ”áƒœáƒ¢áƒ˜"}</dd>
+
+              <dt>áƒ¢áƒ áƒ”áƒ™áƒ˜áƒœáƒ’áƒ˜</dt>
+              <dd>{sale.tracking_code ?? "â€”"}</dd>
+            </dl>
+          </section>
+
+          <section className="panel">
+            <h2>áƒžáƒ áƒáƒ“áƒ£áƒ¥áƒ¢áƒ”áƒ‘áƒ˜</h2>
+
+            <div className="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>áƒžáƒ áƒáƒ“áƒ£áƒ¥áƒ¢áƒ˜</th>
+                    <th>SKU</th>
+                    <th>áƒ áƒáƒáƒ“áƒ”áƒœáƒáƒ‘áƒ</th>
+                    <th>áƒ”áƒ áƒ—áƒ”áƒ£áƒšáƒ˜áƒ¡ áƒ¤áƒáƒ¡áƒ˜</th>
+                    <th>áƒ¤áƒáƒ¡áƒ“áƒáƒ™áƒšáƒ”áƒ‘áƒ</th>
+                    <th>áƒ¯áƒáƒ›áƒ˜</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {items?.map((item) => (
+                    <tr key={item.id}>
+                      <td>
+                        <strong>{item.product_name}</strong>
+                        {item.variant_name && (
+                          <div>{item.variant_name}</div>
+                        )}
+                      </td>
+
+                      <td>{item.sku ?? "â€”"}</td>
+
+                      <td>{item.quantity}</td>
+
+                      <td>{money(item.final_unit_price)}</td>
+
+                      <td>{item.discount_percent}%</td>
+
+                      <td>
+                        <strong>{money(item.line_total)}</strong>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {!items?.length && (
+              <p>áƒáƒ› áƒ’áƒáƒ§áƒ˜áƒ“áƒ•áƒáƒ¨áƒ˜ áƒžáƒ áƒáƒ“áƒ£áƒ¥áƒ¢áƒ˜ áƒ•áƒ”áƒ  áƒ›áƒáƒ˜áƒ«áƒ”áƒ‘áƒœáƒ.</p>
+            )}
+          </section>
+
+          <section className="panel">
+            <h2>áƒ’áƒáƒ“áƒáƒ®áƒ“áƒ”áƒ‘áƒ˜</h2>
+
+            <div className="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>áƒ›áƒ”áƒ—áƒáƒ“áƒ˜</th>
+                    <th>áƒ¢áƒ˜áƒžáƒ˜</th>
+                    <th>áƒ—áƒáƒœáƒ®áƒ</th>
+                    <th>áƒ—áƒáƒ áƒ˜áƒ¦áƒ˜</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {payments?.map((payment) => (
+                    <tr key={payment.id}>
+                      <td>{payment.method_name}</td>
+
+                      <td>
+                        {payment.kind === "sale_payment"
+                          ? "áƒ’áƒáƒ§áƒ˜áƒ“áƒ•áƒ"
+                          : "áƒ“áƒáƒ•áƒáƒšáƒ˜áƒáƒœáƒ”áƒ‘áƒ˜áƒ¡ áƒ“áƒáƒ¤áƒáƒ áƒ•áƒ"}
+                      </td>
+
+                      <td>
+                        <strong>{money(payment.amount)}</strong>
+                      </td>
+
+                      <td>
+                        {new Date(
+                          payment.created_at
+                        ).toLocaleString("ka-GE")}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {!payments?.length && (
+              <p>áƒ’áƒáƒ“áƒáƒ®áƒ“áƒ áƒ•áƒ”áƒ  áƒ›áƒáƒ˜áƒ«áƒ”áƒ‘áƒœáƒ.</p>
+            )}
+          </section>
+
+          <section className="panel">
+            <h2>áƒ¨áƒ”áƒ¯áƒáƒ›áƒ”áƒ‘áƒ</h2>
+
+            <dl className="profile-summary">
+              <dt>áƒ¥áƒ•áƒ”áƒ¯áƒáƒ›áƒ˜</dt>
+              <dd>{money(sale.subtotal)}</dd>
+
+              <dt>áƒ¤áƒáƒ¡áƒ“áƒáƒ™áƒšáƒ”áƒ‘áƒ</dt>
+              <dd>{money(sale.discount_total)}</dd>
+
+              <dt>áƒ¡áƒ£áƒš</dt>
+              <dd>
+                <strong>{money(sale.total)}</strong>
+              </dd>
+
+              <dt>áƒ’áƒáƒ“áƒáƒ®áƒ“áƒ˜áƒšáƒ˜</dt>
+              <dd>{money(sale.paid_total)}</dd>
+
+              <dt>áƒ“áƒáƒ•áƒáƒšáƒ˜áƒáƒœáƒ”áƒ‘áƒ</dt>
+              <dd>{money(sale.debt_amount)}</dd>
+            </dl>
+          </section>
+        </>
+      )}
+    </>
+  );
+}

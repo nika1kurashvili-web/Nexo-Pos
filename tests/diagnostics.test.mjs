@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { safeAuthError } from "../lib/auth/diagnostics.ts";
-import { getSupabaseConfigHealth } from "../lib/supabase/config.ts";
+import { getSupabaseConfig, getSupabaseConfigHealth } from "../lib/supabase/config.ts";
 
 test("error diagnostics retain useful codes but discard raw error fields", () => {
   const secret = "sensitive-password-token-key";
@@ -19,6 +19,28 @@ test("error diagnostics retain useful codes but discard raw error fields", () =>
 
 test("cookie write failures have a safe identifiable category", () => {
   assert.equal(safeAuthError(new Error("Cookies can only be modified in a Server Action or Route Handler.")).category, "cookie_write_not_allowed");
+});
+
+test("public client configuration rejects secret keys and malformed base URLs", () => {
+  const previousUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const previousKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  try {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
+    const jwt = role => `header.${Buffer.from(JSON.stringify({ role })).toString("base64url")}.signature`;
+    for (const key of ["sb_secret_do-not-use", jwt("service_role"), jwt("authenticated")]) {
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = key;
+      assert.equal(getSupabaseConfig(), null);
+    }
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = jwt("anon");
+    assert.ok(getSupabaseConfig());
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co/rest/v1";
+    assert.equal(getSupabaseConfig(), null);
+  } finally {
+    if (previousUrl === undefined) delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+    else process.env.NEXT_PUBLIC_SUPABASE_URL = previousUrl;
+    if (previousKey === undefined) delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    else process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = previousKey;
+  }
 });
 
 test("environment diagnostics identify malformed URLs and key shape without values", () => {

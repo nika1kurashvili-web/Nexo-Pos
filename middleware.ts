@@ -15,6 +15,8 @@ export async function middleware(request: NextRequest) {
     const result = path ? NextResponse.redirect(new URL(path, request.url), 303) : response;
     if (path) response.cookies.getAll().forEach((cookie) => result.cookies.set(cookie));
     result.headers.set("Cache-Control", "private, no-store, max-age=0");
+    result.headers.set("Pragma", "no-cache");
+    result.headers.set("Expires", "0");
     return result;
   }
 

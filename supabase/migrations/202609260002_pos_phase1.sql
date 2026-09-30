@@ -147,6 +147,16 @@ create table public.pos_sales (
 create index pos_sales_customer on public.pos_sales(customer_id, created_at);
 create index pos_sales_session on public.pos_sales(session_id);
 
+-- Identity sequences inherit separate grants; table RLS/revokes do not cover them.
+-- Resolve the actual schema-qualified sequence name rather than assuming its name.
+do $$ declare sale_number_sequence text; begin
+  sale_number_sequence := pg_catalog.pg_get_serial_sequence('public.pos_sales', 'sale_number');
+  if sale_number_sequence is null then
+    raise exception 'POS sale_number identity sequence is missing';
+  end if;
+  execute pg_catalog.format('revoke all privileges on sequence %s from public, anon, authenticated', sale_number_sequence);
+end $$;
+
 create table public.pos_sale_items as select p.id as product_id, v.id as variant_id
   from public.products p cross join public.product_variants v with no data;
 alter table public.pos_sale_items

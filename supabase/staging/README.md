@@ -91,3 +91,45 @@ migration files in the required order. It also verifies pre-fix provisioning,
 preserved legacy membership, post-fix isolation/catalog permissions, explicit
 Orders/dual membership, a POS sale/close and refusal to bootstrap populated data.
 It creates no users or SQL objects in any Supabase project.
+
+## Investigating duplicate prerequisite functions (42723)
+
+The checked-in bootstrap and migration 001 do not create
+`nexo_finalize_user_memberships(uuid)` or `nexo_provisioning_version()`.
+The prerequisite contains exactly one CREATE for each. Referencing a function
+does not create it. The complete fresh local sequence succeeds without replacements.
+
+If staging reports a duplicate, do not drop/replace the function or reset the
+project yet. Run `supabase/inspection/staging_prerequisite_state.sql` in staging
+and export its single result set. It reads metadata only, reports all overloads,
+owners/privileges, Auth and DDL event triggers, recorded dependencies, and compares
+function-body fingerprints with these repository files without executing them.
+Review the submitted SQL in SQL Editor history and verify the staging project
+reference. PostgreSQL catalogs cannot establish who/when originally created a
+function; a fingerprint match alone also does not prove all grants are correct.
+
+The exact current prerequisite starts BEGIN and ends COMMIT. A failure prevents
+that transaction from committing; changes made in that transaction are rolled
+back on ROLLBACK/disconnect. If the same connection remains in an aborted
+transaction, `ROLLBACK;` ends it. This does not remove objects committed earlier.
+At the reported first helper CREATE, the preceding statements in this file are
+read-only preflight checks, so that failed attempt has created no helpers or
+replaced handle_new_user. Running only selected statements without BEGIN, using
+different SQL, a prior successful run, or a concurrent DDL session changes what
+can be concluded; inspect actual state/history instead of assuming partial commit.
+
+Interpretation after review:
+
+- Both helpers absent and handle_new_user matching pre-fix bootstrap: after
+  confirming the submitted SQL/history, run the prerequisite once in full.
+- Both helpers and handle_new_user matching prerequisite bodies, with correct
+  owner/search_path/grants and trigger binding: it may already be installed;
+  verify the whole installation rather than rerunning or deleting it.
+- A mixture or different definitions: stop and review provenance/dependencies
+  before deciding on a targeted recovery. No destructive cleanup is prescribed
+  solely from a duplicate-function error. Keep migration 002 on hold.
+
+Regression tests explicitly verify helper absence after bootstrap/001, reproduce
+42723 on a second committed prerequisite run, and force a later collision to show
+that newly created helpers and handle_new_user replacement roll back while
+pre-existing committed objects survive.

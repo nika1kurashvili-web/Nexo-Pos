@@ -35,6 +35,7 @@ before(async()=>{
 after(async()=>db.close());
 
 test('staging bootstrap creates only shared prerequisites and four fictional catalog rows',async()=>{
+  assert.deepEqual(await query("select proname from pg_proc where pronamespace='public'::regnamespace and proname in ('nexo_finalize_user_memberships','nexo_provisioning_version')"),[]);
   assert.deepEqual((await query("select tablename from pg_tables where schemaname='public' order by tablename")).map(r=>r.tablename),
     ['product_purchase_prices','product_variants','products','profiles']);
   assert.equal((await query('select count(*)::int n from auth.users'))[0].n,0);
@@ -49,13 +50,67 @@ test('bootstrap reproduces pre-fix automatic active Orders operator membership',
   assert.equal((await query("select to_regclass('public.pos_profiles') table_name"))[0].table_name,null);
   assert.equal((await asUser(legacy,'select * from products')).length,2);
 });
+test('read-only diagnosis shows no prerequisite helpers in bootstrap state',async()=>{
+  await db.exec('begin read only');
+  try {
+    const result=await db.exec(await source('../supabase/inspection/staging_prerequisite_state.sql'));
+    assert.equal(result.length,1);
+    const routines=result[0].rows.filter(r=>r.section==='routines');
+    assert.equal(JSON.parse(routines.find(r=>r.object_name==='public.nexo_finalize_user_memberships(uuid)').details).body_state,'ABSENT');
+    assert.equal(JSON.parse(routines.find(r=>r.object_name==='public.handle_new_user()').details).body_state,'MATCHES_REPOSITORY_PRE_FIX_BOOTSTRAP');
+  } finally { await db.exec('rollback'); }
+});
 test('unchanged 001, prerequisite, and 002 execute against bootstrap in required order',async()=>{
   for(const file of ['../supabase/migrations/202609260001_create_pos_profiles.sql',
     '../supabase/prerequisites/202609280001_explicit_app_memberships.sql',
-    '../supabase/migrations/202609260002_pos_phase1.sql']) await db.exec(await source(file));
+    '../supabase/migrations/202609260002_pos_phase1.sql']) {
+    await db.exec(await source(file));
+    if (file.includes('202609260001_')) {
+      assert.deepEqual(await query("select proname from pg_proc where pronamespace='public'::regnamespace and proname in ('nexo_finalize_user_memberships','nexo_provisioning_version')"),[]);
+      assert.match((await query("select prosrc from pg_proc where oid='public.handle_new_user()'::regprocedure"))[0].prosrc,/insert into public.profiles/);
+    }
+  }
   assert.deepEqual((await query('select * from profiles where id=$1',[legacy]))[0],legacyProfile);
   assert.equal((await query("select count(*)::int n from pg_tables where schemaname='public' and tablename like 'pos_%'"))[0].n,10);
   assert.equal((await query("select count(*)::int n from pg_policies where policyname='pos_active_users_select_products'"))[0].n,1);
+});
+
+test('rerunning a committed prerequisite reproduces 42723 and preserves committed functions after rollback',async()=>{
+  const snapshot = () => query("select oid,proname,prosrc,proacl::text,proconfig from pg_proc where pronamespace='public'::regnamespace and proname in ('nexo_finalize_user_memberships','nexo_provisioning_version','handle_new_user') order by proname");
+  const before=await snapshot();
+  await assert.rejects(db.exec(await source('../supabase/prerequisites/202609280001_explicit_app_memberships.sql')),
+    error=>error.code==='42723' && error.message.includes('nexo_finalize_user_memberships'));
+  await db.exec('rollback');
+  assert.deepEqual(await snapshot(),before);
+  await db.exec('begin read only');
+  try {
+    const result=await db.exec(await source('../supabase/inspection/staging_prerequisite_state.sql'));
+    const routines=result[0].rows.filter(r=>r.section==='routines');
+    assert.equal(routines.length,3);
+    assert.ok(routines.every(r=>JSON.parse(r.details).body_state==='MATCHES_REPOSITORY_PREREQUISITE'));
+  } finally { await db.exec('rollback'); }
+});
+
+test('a later prerequisite failure rolls back newly created helper and trigger replacement',async()=>{
+  const isolated=new PGlite();
+  try {
+    await isolated.exec(`create role anon; create role authenticated; create role service_role bypassrls;
+      create schema auth;
+      create table auth.users(id uuid primary key,email text,raw_app_meta_data jsonb,raw_user_meta_data jsonb);
+      create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
+      grant usage on schema auth to authenticated;`);
+    await isolated.exec(await source('../supabase/staging/000_shared_pre_pos_bootstrap.sql'));
+    await isolated.exec(await source('../supabase/migrations/202609260001_create_pos_profiles.sql'));
+    const old=(await isolated.query("select prosrc,proacl::text from pg_proc where oid='public.handle_new_user()'::regprocedure")).rows;
+    // Deliberate committed collision later in the file: tests rollback of earlier DDL.
+    await isolated.exec('create function public.nexo_provisioning_version() returns integer language sql as $$ select 999 $$');
+    await assert.rejects(isolated.exec(await source('../supabase/prerequisites/202609280001_explicit_app_memberships.sql')),
+      error=>error.code==='42723' && error.message.includes('nexo_provisioning_version'));
+    await isolated.exec('rollback');
+    assert.equal((await isolated.query("select to_regprocedure('public.nexo_finalize_user_memberships(uuid)') helper")).rows[0].helper,null);
+    assert.deepEqual((await isolated.query("select prosrc,proacl::text from pg_proc where oid='public.handle_new_user()'::regprocedure")).rows,old);
+    assert.equal((await isolated.query('select public.nexo_provisioning_version() value')).rows[0].value,999);
+  } finally { await isolated.close(); }
 });
 test('new unmarked and delayed POS provisioning remain isolated after full sequence',async()=>{
   const id=await authUser();assert.equal((await query('select * from profiles where id=$1',[id])).length,0);

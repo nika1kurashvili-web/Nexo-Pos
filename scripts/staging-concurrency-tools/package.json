@@ -1,0 +1,9 @@
+{
+  "name": "nexo-staging-concurrency-tools",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Manual staging lock-control connections; never imported by the POS application",
+  "dependencies": {
+    "pg": "8.16.3"
+  }
+}

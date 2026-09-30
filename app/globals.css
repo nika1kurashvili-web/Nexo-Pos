@@ -87,6 +87,10 @@ dt { color: #586174; } dd { margin: 0.4rem 0 1rem; font-weight: 600; }
 summary { cursor: pointer; margin: 1rem 0; }
 .skip-link { position: fixed; top: -10rem; left: 1rem; background: white; padding: 1rem; z-index: 10; }
 .skip-link:focus { top: 1rem; }
+.app-shell.auth-shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
+.account-panel { max-width: 48rem; margin-inline: auto; }
+.profile-summary { margin-top: 2rem; overflow-wrap: anywhere; }
+.profile-summary dd span { color: #586174; font-weight: 400; }
 @media (max-width: 760px) {
   .app-shell { grid-template-columns: 1fr; grid-template-rows: auto auto 1fr; }
   .app-header { padding: 1rem; flex-wrap: wrap; }
@@ -98,4 +102,312 @@ summary { cursor: pointer; margin: 1rem 0; }
   .panel { padding: 1.5rem; }
   .login-page { padding: 1rem; }
   .login-card { padding: 1.5rem; }
+}
+
+/* =========================
+   POS SALE TERMINAL
+   ========================= */
+
+.sale-terminal {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(380px, 0.9fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.sale-terminal > .panel {
+  margin-top: 0;
+}
+
+.sale-terminal > .panel:last-child {
+  position: sticky;
+  top: 1.5rem;
+}
+
+.sale-terminal label {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #394457;
+}
+
+.sale-terminal input,
+.sale-terminal select,
+.sale-terminal textarea {
+  width: 100%;
+  min-height: 2.8rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid #cfd6e1;
+  border-radius: 0.5rem;
+  background: #fff;
+  color: #17202e;
+  font: inherit;
+}
+
+.sale-terminal input:focus,
+.sale-terminal select:focus,
+.sale-terminal textarea:focus {
+  border-color: #274bc4;
+  outline: 3px solid rgba(39, 75, 196, 0.12);
+  outline-offset: 0;
+}
+
+.sale-terminal input[type="search"] {
+  min-height: 3.2rem;
+  font-size: 1rem;
+}
+
+.sale-terminal table {
+  min-width: 620px;
+}
+
+.sale-terminal th {
+  padding: 0.75rem;
+  background: #f7f8fa;
+  color: #586174;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.sale-terminal td {
+  vertical-align: middle;
+}
+
+.sale-terminal td strong {
+  display: block;
+  color: #17202e;
+}
+
+.sale-terminal td strong + div {
+  margin-top: 0.25rem;
+  color: #586174;
+  font-size: 0.88rem;
+}
+
+.sale-terminal td input[type="number"] {
+  min-width: 90px;
+  max-width: 120px;
+  min-height: 2.5rem;
+  padding: 0.5rem 0.6rem;
+}
+
+.sale-terminal .button {
+  border: 1px solid #274bc4;
+  background: #274bc4;
+  color: #fff;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.05s ease;
+}
+
+.sale-terminal .button:hover:not(:disabled) {
+  background: #1d3ca5;
+  border-color: #1d3ca5;
+}
+
+.sale-terminal .button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.sale-terminal .button.secondary {
+  min-height: 2.4rem;
+  padding: 0.5rem 0.8rem;
+  border-color: #d5dce7;
+  background: #fff;
+  color: #17202e;
+  font-size: 0.88rem;
+}
+
+.sale-terminal .button.secondary:hover:not(:disabled) {
+  background: #f1f4fa;
+  border-color: #c5cedc;
+}
+
+.sale-terminal hr {
+  margin: 1.5rem 0;
+  border: 0;
+  border-top: 1px solid #e1e5ec;
+}
+
+.sale-terminal .panel:last-child > div:has(> strong) {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1.25rem;
+  padding: 1.25rem;
+  border-radius: 0.65rem;
+  background: #f4f6fb;
+}
+
+.sale-terminal .panel:last-child > div:has(> strong) strong {
+  color: #17202e;
+  font-size: 1.45rem;
+}
+
+.sale-terminal form .button[type="submit"] {
+  width: 100%;
+  min-height: 3.5rem;
+  margin-top: 0.5rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.sale-terminal form .button[type="submit"]:disabled {
+  border-color: #d7dce5;
+  background: #e7eaf0;
+  color: #8992a1;
+}
+
+@media (max-width: 1100px) {
+  .sale-terminal {
+    grid-template-columns: 1fr;
+  }
+
+  .sale-terminal > .panel:last-child {
+    position: static;
+  }
+}
+
+@media (max-width: 760px) {
+  .sale-terminal {
+    gap: 1rem;
+  }
+
+  .sale-terminal table {
+    min-width: 560px;
+  }
+
+  .sale-terminal .panel:last-child > div:has(> strong) strong {
+    font-size: 1.25rem;
+  }
+}
+
+.sales-filters {
+  max-width: none;
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  align-items: end;
+}
+
+.sales-filter-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.sales-filter-actions .button {
+  margin-top: 0;
+}
+
+@media (max-width: 900px) {
+  .sales-filters {
+    grid-template-columns: repeat(2, minmax(150px, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .sales-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .sales-filter-actions {
+    flex-wrap: wrap;
+  }
+}
+/* =========================
+   POS SIDEBAR NAVIGATION
+   ========================= */
+
+.sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.sidebar-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.sidebar-admin-group {
+  padding-top: 1rem;
+  border-top: 1px solid #e1e5ec;
+}
+
+.sidebar-section-title {
+  padding: 0 1rem 0.4rem;
+  color: #8992a1;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.sidebar .sidebar-link {
+  display: flex;
+  align-items: center;
+  min-height: 2.8rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.55rem;
+  color: #394457;
+  font-weight: 600;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.sidebar .sidebar-link:hover {
+  background: #edf1fc;
+  color: #274bc4;
+}
+
+.sidebar .sidebar-link.active {
+  background: #e7edff;
+  color: #274bc4;
+}
+
+.sidebar .sidebar-primary {
+  margin: 0.35rem 0;
+  background: #274bc4;
+  color: white;
+}
+
+.sidebar .sidebar-primary:hover {
+  background: #1d3ca5;
+  color: white;
+}
+
+.sidebar .sidebar-primary.active {
+  background: #1d3ca5;
+  color: white;
+}
+
+@media (max-width: 760px) {
+  .sidebar nav {
+    gap: 0.75rem;
+  }
+
+  .sidebar-group {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .sidebar-admin-group {
+    padding-top: 0.75rem;
+  }
+
+  .sidebar-section-title {
+    width: 100%;
+    padding-left: 0.25rem;
+  }
+
+  .sidebar .sidebar-link {
+    min-height: 2.5rem;
+    padding: 0.65rem 0.8rem;
+  }
 }
