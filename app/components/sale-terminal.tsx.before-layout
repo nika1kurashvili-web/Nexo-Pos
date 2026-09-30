@@ -537,7 +537,9 @@ export default function SaleTerminal({
             )}
           </>
         )}
-      
+      </section>
+
+      <section className="panel">
         <h2>პროდუქტის დამატება</h2>
 
         {saleType === "wholesale" &&
