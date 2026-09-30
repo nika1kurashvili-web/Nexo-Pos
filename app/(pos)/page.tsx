@@ -4,6 +4,7 @@ import { roleLabels } from "@/lib/auth/access";
 import { posClient, money } from "@/lib/pos/server";
 import { Notice, SaveButton } from "@/app/components/pos-forms";
 import { openRegister, closeRegister } from "./actions";
+import { cashCents, sessionCashTotals } from "@/lib/pos/register-cash";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,7 @@ export default async function PosHomePage({
   const profile = await requirePosProfile();
   const client = await posClient();
 
-  const [{ data: registers }, { data: sessions }] = await Promise.all([
+  const [{ data: registers, error: registersError }, { data: activeSession, error: sessionError }] = await Promise.all([
     client
       .from("pos_registers")
       .select("id,name")
@@ -28,10 +29,8 @@ export default async function PosHomePage({
       .eq("cashier_id", profile.id)
       .eq("status", "open")
       .order("opened_at", { ascending: false })
-      .limit(1),
+      .maybeSingle(),
   ]);
-
-  const activeSession = sessions?.[0] ?? null;
 
   const activeRegister = activeSession
     ? registers?.find(
@@ -39,27 +38,14 @@ export default async function PosHomePage({
       )
     : null;
 
-  let cashSales = 0;
-
-  if (activeSession) {
-    const { data: cashPayments } = await client
-      .from("pos_payments")
-      .select("amount")
-      .eq("session_id", activeSession.id)
-      .eq("method_code", "cash");
-
-    cashSales =
-      cashPayments?.reduce(
-        (sum, payment) => sum + Number(payment.amount),
-        0
-      ) ?? 0;
-  }
+  const cashTotals = await sessionCashTotals(client, activeSession ? [activeSession.id] : []);
+  const cashSales = activeSession && cashTotals ? (cashTotals.get(activeSession.id) ?? 0) / 100 : null;
 
   const openingCash = activeSession
     ? Number(activeSession.opening_cash)
     : 0;
 
-  const expectedCash = openingCash + cashSales;
+  const expectedCash = cashSales === null ? null : (cashCents(openingCash) + cashCents(cashSales)) / 100;
 
   return (
     <>
@@ -85,15 +71,21 @@ export default async function PosHomePage({
         </dl>
       </section>
 
-      <Notice {...(await searchParams)} />
+      <Notice {...(await searchParams)} loadError={Boolean(sessionError || registersError || cashTotals === null)} />
 
-      {activeSession ? (
+      {sessionError ? <section className="panel"><p>მიმდინარე სესიის შემოწმება ვერ მოხერხდა. განაახლეთ გვერდი; ახალი სალარო არ გახსნათ.</p></section> : activeSession ? (
         <section className="panel">
           <h2>სალარო გახსნილია</h2>
 
           <dl className="profile-summary">
             <dt>სალარო</dt>
-            <dd>{activeRegister?.name ?? "სალარო"}</dd>
+            <dd>{activeRegister?.name ?? activeSession.register_id}</dd>
+
+            <dt>ვინ გახსნა</dt>
+            <dd>{profile.full_name}</dd>
+
+            <dt>გახსნის თარიღი და დრო</dt>
+            <dd>{new Date(activeSession.opened_at).toLocaleString("ka-GE", { timeZone: "Asia/Tbilisi" })}</dd>
 
             <dt>საწყისი ნაღდი</dt>
             <dd>{money(openingCash)}</dd>
@@ -127,7 +119,7 @@ export default async function PosHomePage({
                 type="number"
                 min="0"
                 step="0.01"
-                defaultValue={expectedCash.toFixed(2)}
+                defaultValue={expectedCash?.toFixed(2) ?? ""}
                 required
               />
             </label>
@@ -148,7 +140,7 @@ export default async function PosHomePage({
         <section className="panel">
           <h2>სალაროს გახსნა</h2>
 
-          {registers?.length ? (
+          {registersError ? <p>სალაროების ჩატვირთვა ვერ მოხერხდა. განაახლეთ გვერდი.</p> : registers?.length ? (
             <form action={openRegister} className="data-form">
               <label>
                 სალარო
