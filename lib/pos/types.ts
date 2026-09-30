@@ -1,4 +1,5 @@
 export type Decimal = string | number;
+export type PosEmployee = { id: string; full_name: string; email: string | null; role: "admin" | "cashier"; active: boolean; created_at: string; has_open_session: boolean; has_orders: boolean };
 export type RegisterState = {
   register_id: string; register_name: string; register_active: boolean;
   session_id: string | null; cashier_id: string | null; cashier_name: string | null;
@@ -22,6 +23,7 @@ export type SaleItem = { id: string; sale_id: string; line_number: number; targe
 export type CustomerTransaction = { id: string; customer_id: string; sale_id: string; payment_id: string | null; kind: "sale_charge" | "sale_payment" | "repayment"; amount: Decimal; created_at: string };
 type Table<Row> = { Row: Row; Insert: Partial<Row>; Update: Partial<Row>; Relationships: [] };
 export type PosTables = {
+  pos_employee_audit: Table<{ id: string; actor_id: string; target_id: string; event: string; before_state: Json | null; after_state: Json | null; created_at: string }>;
   pos_business_customers: Table<Customer>;
   pos_registers: Table<Register>;
   pos_payment_methods: Table<PaymentMethod>;
@@ -34,6 +36,12 @@ export type PosTables = {
 };
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 export type PosFunctions = {
+  pos_employee_list: { Args: Record<string, never>; Returns: PosEmployee[] };
+  pos_employee_lookup: { Args: { p_email: string }; Returns: { id: string; has_pos: boolean } | null };
+  pos_employee_save: { Args: { p_user: string; p_name: string; p_role: string; p_active: boolean }; Returns: string };
+  pos_employee_password_request: { Args: { p_user: string; p_shared_confirm: boolean }; Returns: string };
+  pos_employee_password_result: { Args: { p_request: string; p_success: boolean }; Returns: boolean };
+  nexo_provisioning_version: { Args: Record<string, never>; Returns: number };
   pos_register_state: { Args: Record<string, never>; Returns: RegisterState[] };
   pos_register_session_report: { Args: { p_from?: string | null; p_to?: string | null; p_register?: string | null; p_cashier?: string | null; p_status?: string | null }; Returns: RegisterReport };
   pos_import_customer_prices: { Args: { p_customer: string; p_rows: Json }; Returns: number };
