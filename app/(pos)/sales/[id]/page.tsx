@@ -72,6 +72,135 @@ export default async function SaleDetailsPage({
 
       {sale && (
         <>
+<div className="receipt-actions">
+  <ReceiptPrintButton />
+</div>
+
+<section className="receipt-print">
+  <div className="receipt-header">
+    <strong>NEXO.GE</strong>
+    <span>ქვითარი #{sale.sale_number}</span>
+    <span>
+      {new Date(sale.created_at).toLocaleString("ka-GE")}
+    </span>
+  </div>
+
+  <div className="receipt-divider" />
+
+  <div className="receipt-info">
+    <div>
+      <span>მოლარე:</span>
+      <span>{sale.cashier_name}</span>
+    </div>
+
+    <div>
+      <span>ტიპი:</span>
+      <span>
+        {sale.sale_type === "retail"
+          ? "საცალო"
+          : "საბითუმო"}
+      </span>
+    </div>
+
+    {sale.customer_name && (
+      <div>
+        <span>კლიენტი:</span>
+        <span>{sale.customer_name}</span>
+      </div>
+    )}
+
+    {sale.tracking_code && (
+      <div>
+        <span>Tracking:</span>
+        <span>{sale.tracking_code}</span>
+      </div>
+    )}
+  </div>
+
+  <div className="receipt-divider" />
+
+  <div className="receipt-items">
+    {items?.map((item) => (
+      <div
+        className="receipt-item"
+        key={`receipt-${item.id}`}
+      >
+        <div className="receipt-item-name">
+          {item.product_name}
+          {item.variant_name
+            ? ` / ${item.variant_name}`
+            : ""}
+        </div>
+
+        <div className="receipt-item-line">
+          <span>
+            {item.quantity} × {money(item.final_unit_price)}
+          </span>
+
+          <strong>{money(item.line_total)}</strong>
+        </div>
+
+        {Number(item.discount_percent) > 0 && (
+          <div className="receipt-discount">
+            ფასდაკლება: {item.discount_percent}%
+          </div>
+        )}
+      </div>
+    ))}
+  </div>
+
+  <div className="receipt-divider" />
+
+  {Number(sale.discount_total) > 0 && (
+    <div className="receipt-total-row">
+      <span>ფასდაკლება</span>
+      <span>{money(sale.discount_total)}</span>
+    </div>
+  )}
+
+  <div className="receipt-total-row receipt-grand-total">
+    <span>სულ</span>
+    <strong>{money(sale.total)}</strong>
+  </div>
+
+  <div className="receipt-divider" />
+
+  <div className="receipt-payments">
+    {payments
+      ?.filter(
+        (payment) =>
+          payment.kind === "sale_payment"
+      )
+      .map((payment) => (
+        <div
+          className="receipt-total-row"
+          key={`receipt-payment-${payment.id}`}
+        >
+          <span>{payment.method_name}</span>
+          <span>{money(payment.amount)}</span>
+        </div>
+      ))}
+  </div>
+
+  {sale.sale_type === "wholesale" &&
+    currentDebtCents !== null &&
+    currentDebtCents > 0 && (
+      <>
+        <div className="receipt-divider" />
+
+        <div className="receipt-total-row">
+          <strong>დარჩენილი დავალიანება</strong>
+          <strong>
+            {money(currentDebtCents / 100)}
+          </strong>
+        </div>
+      </>
+    )}
+
+  <div className="receipt-footer">
+    მადლობა შეძენისთვის!
+  </div>
+</section>
           <section className="panel">
             <h2>გაყიდვის ინფორმაცია</h2>
 
