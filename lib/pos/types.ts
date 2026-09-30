@@ -1,12 +1,26 @@
 export type Decimal = string | number;
 export type PosEmployee = { id: string; full_name: string; email: string | null; role: "admin" | "cashier"; active: boolean; created_at: string; has_open_session: boolean; has_orders: boolean };
 export type RegisterState = {
-  register_id: string; register_name: string; register_active: boolean;
-  session_id: string | null; cashier_id: string | null; cashier_name: string | null;
-  opened_at: string | null; opening_cash: Decimal | null; cash_payments: Decimal | null;
-  expected_cash: Decimal | null; is_own: boolean; can_close: boolean;
-};
-export type RegisterReport = {
+  register_id: string;
+  register_name: string;
+  register_active: boolean;
+
+  session_id: string | null;
+  cashier_id: string | null;
+  cashier_name: string | null;
+
+  opened_at: string | null;
+  opening_cash: Decimal | null;
+  cash_payments: Decimal | null;
+  expected_cash: Decimal | null;
+
+  is_own: boolean;
+  can_close: boolean;
+
+  last_actual_closing_cash: Decimal | null;
+  last_expected_closing_cash: Decimal | null;
+  last_closed_at: string | null;
+};export type RegisterReport = {
   registers: { id: string; name: string }[];
   cashiers: { id: string; full_name: string }[];
   sessions: (RegisterSession & { register_name: string; cashier_name: string; expected_cash: Decimal | null })[];
