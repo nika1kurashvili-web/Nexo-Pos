@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requirePosProfile } from "@/lib/auth/server";
 import { posClient, money } from "@/lib/pos/server";
 import { Notice } from "@/app/components/pos-forms";
+import { ReceiptPrintButton } from "@/app/components/receipt-print-button";
 
 export const dynamic = "force-dynamic";
 
