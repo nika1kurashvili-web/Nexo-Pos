@@ -1,4 +1,15 @@
 export type Decimal = string | number;
+export type RegisterState = {
+  register_id: string; register_name: string; register_active: boolean;
+  session_id: string | null; cashier_id: string | null; cashier_name: string | null;
+  opened_at: string | null; opening_cash: Decimal | null; cash_payments: Decimal | null;
+  expected_cash: Decimal | null; is_own: boolean; can_close: boolean;
+};
+export type RegisterReport = {
+  registers: { id: string; name: string }[];
+  cashiers: { id: string; full_name: string }[];
+  sessions: (RegisterSession & { register_name: string; cashier_name: string; expected_cash: Decimal | null })[];
+};
 type Stamp = { created_at: string; updated_at: string };
 export type Customer = Stamp & { id: string; name: string; tax_code: string | null; phone: string | null; address: string | null; email: string | null; notes: string | null; active: boolean };
 export type Register = Stamp & { id: string; name: string; active: boolean };
@@ -23,6 +34,8 @@ export type PosTables = {
 };
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 export type PosFunctions = {
+  pos_register_state: { Args: Record<string, never>; Returns: RegisterState[] };
+  pos_register_session_report: { Args: { p_from?: string | null; p_to?: string | null; p_register?: string | null; p_cashier?: string | null; p_status?: string | null }; Returns: RegisterReport };
   pos_import_customer_prices: { Args: { p_customer: string; p_rows: Json }; Returns: number };
   pos_customer_balance: { Args: { p_customer: string }; Returns: number };
   pos_open_register: { Args: { p_register: string; p_cash: string }; Returns: string };
