@@ -7,6 +7,7 @@ import { addEmployee, updateEmployee, resetEmployeePassword } from "./actions";
 export const dynamic = "force-dynamic";
 const errors: Record<string, string> = {
   SELF_DISABLE_FORBIDDEN: "საკუთარი ანგარიშის გათიშვა დაუშვებელია.",
+  SELF_DEMOTION_FORBIDDEN: "საკუთარი ადმინისტრატორის როლის მოლარედ შეცვლა დაუშვებელია.",
   LAST_ADMIN: "ბოლო აქტიური POS ადმინისტრატორის გათიშვა ან მოლარედ შეცვლა დაუშვებელია.",
   EMPLOYEE_OPEN_SESSION: "თანამშრომელს ღია სალარო აქვს. გათიშვამდე ჯერ სალარო უნდა დაიხუროს.",
   MEMBERSHIP_METADATA_INVALID: "ანგარიშის წევრობის მონაცემები გადამოწმებას საჭიროებს. ცვლილება არ შენახულა.",
@@ -64,7 +65,7 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
                 <EmployeeForm action={updateEmployee} confirmation="შევინახოთ POS პროფილის, როლისა და სტატუსის ცვლილებები? Orders წევრობა უცვლელი დარჩება.">
                   <input type="hidden" name="id" value={e.id}/>
                   <label>სახელი<input name="name" defaultValue={e.full_name} required maxLength={200}/></label>
-                  <label>როლი<select name="role" defaultValue={e.role}><option value="cashier" disabled={e.active && e.role==="admin" && adminCount===1}>მოლარე</option><option value="admin">Admin</option></select></label>
+                  <label>როლი<select name="role" defaultValue={e.role}><option value="cashier" disabled={e.id===actor.id || (e.active && e.role==="admin" && adminCount===1)}>მოლარე</option><option value="admin">Admin</option></select></label>
                   {cannotDisable && e.active ? <><input type="hidden" name="active" value="yes"/><p>აქტიურია — გათიშვა დაუშვებელია საკუთარი ანგარიშის, ბოლო admin-ის ან ღია სალაროს შემთხვევაში.</p></> : <label className="check"><input type="checkbox" name="active" defaultChecked={e.active}/>აქტიური</label>}
                   <SubmitButton pendingText="ინახება…" className="button secondary">შენახვა</SubmitButton>
                 </EmployeeForm>

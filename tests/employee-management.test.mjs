@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { PGlite } from '@electric-sql/pglite';
 
 test('employee lifecycle preserves Orders, enforces DB guards, and limits audit/password privileges', async () => {
@@ -29,13 +29,18 @@ test('employee lifecycle preserves Orders, enforces DB guards, and limits audit/
       grant usage on schema auth to authenticated,service_role;`);
     for(const file of ['supabase/staging/000_shared_pre_pos_bootstrap.sql','supabase/migrations/202609260001_create_pos_profiles.sql',
       'supabase/prerequisites/202609280001_explicit_app_memberships.sql','supabase/migrations/202609260002_pos_phase1.sql',
-      'supabase/migrations/202609300001_pos_register_visibility.sql']) await db.exec(await sql(file));
+      'supabase/migrations/202609300001_pos_register_visibility.sql',
+      'supabase/migrations/202609300002_pos_register_last_close.sql']) await db.exec(await sql(file));
     const admin=await user({version:1,pos:'admin'});
     const orders=await user({version:1,orders:'operator'});
     const before=await q('select * from profiles order by id');
+    const existingPos=await q('select * from pos_profiles order by id');
+    const registerDefinition=await q("select pg_get_functiondef('public.pos_register_state()'::regprocedure) definition");
     const policies=await q("select tablename,policyname,qual,with_check from pg_policies where tablename not like 'pos_%' order by tablename,policyname");
-    await db.exec(await sql('supabase/migrations/202609300002_pos_employee_management.sql'));
+    await db.exec(await sql('supabase/migrations/202610010001_pos_employee_management.sql'));
     assert.deepEqual(await q('select * from profiles order by id'),before);
+    assert.deepEqual(await q('select * from pos_profiles order by id'),existingPos);
+    assert.deepEqual(await q("select pg_get_functiondef('public.pos_register_state()'::regprocedure) definition"),registerDefinition);
     assert.deepEqual(await q("select tablename,policyname,qual,with_check from pg_policies where tablename not like 'pos_%' order by tablename,policyname"),policies);
 
     const employee=await user();
@@ -49,10 +54,23 @@ test('employee lifecycle preserves Orders, enforces DB guards, and limits audit/
     await assert.rejects(call(employee,'pos_employee_save',[admin,'Forged','cashier',false]),/POS_ACCESS_DENIED/);
     await assert.rejects(asRole('authenticated',employee,"update pos_profiles set role='admin' where id=$1",[employee]),/permission denied/);
     await assert.rejects(call(admin,'pos_employee_save',[admin,'Admin','admin',false]),/SELF_DISABLE_FORBIDDEN/);
-    await assert.rejects(call(admin,'pos_employee_save',[admin,'Admin','cashier',true]),/LAST_ADMIN/);
+    await assert.rejects(call(admin,'pos_employee_save',[admin,'Admin','cashier',true]),/SELF_DEMOTION_FORBIDDEN/);
+    // With only one admin, both destructive requests remain rejected and atomic.
+    assert.equal((await q("select count(*)::int n from pos_profiles where active and role='admin'"))[0].n,1);
+    await assert.rejects(call(orders,'pos_employee_list'),/POS_ACCESS_DENIED/);
+    await assert.rejects(call(orders,'pos_employee_save',[employee,'Forged','admin',true]),/POS_ACCESS_DENIED/);
+    await assert.rejects(call(employee,'pos_employee_password_request',[admin,true]),/POS_ACCESS_DENIED/);
+    await assert.rejects(call(orders,'pos_employee_password_request',[admin,true]),/POS_ACCESS_DENIED/);
 
     await call(admin,'pos_employee_save',[orders,'Dual','cashier',true]);
     await call(admin,'pos_employee_save',[orders,'Dual Admin','admin',true]);
+    // Critical regression: self-protection still applies with TWO active admins.
+    const protectedState=await q('select * from pos_profiles order by id');
+    const protectedAudit=await q('select * from pos_employee_audit order by id');
+    await assert.rejects(call(admin,'pos_employee_save',[admin,'Admin','cashier',true]),/SELF_DEMOTION_FORBIDDEN/);
+    await assert.rejects(call(admin,'pos_employee_save',[admin,'Admin','admin',false]),/SELF_DISABLE_FORBIDDEN/);
+    assert.deepEqual(await q('select * from pos_profiles order by id'),protectedState);
+    assert.deepEqual(await q('select * from pos_employee_audit order by id'),protectedAudit);
     await call(admin,'pos_employee_save',[orders,'Dual Inactive','cashier',false]);
     assert.deepEqual(await q('select * from profiles order by id'),before);
     assert.deepEqual((await q('select raw_app_meta_data from auth.users where id=$1',[orders]))[0].raw_app_meta_data,
@@ -67,6 +85,7 @@ test('employee lifecycle preserves Orders, enforces DB guards, and limits audit/
     await call(employee,'pos_close_register',[session,'0','Local fixture']);
     await call(admin,'pos_employee_save',[employee,'Cashier','cashier',false]);
     await assert.rejects(call(employee,'pos_open_register',[register,'0']),/POS_ACCESS_DENIED/);
+    await assert.rejects(call(employee,'pos_employee_list'),/POS_ACCESS_DENIED/);
     await call(admin,'pos_employee_save',[employee,'Cashier','cashier',true]);
 
     await assert.rejects(call(admin,'pos_employee_password_request',[orders,false]),/SHARED_PASSWORD_CONFIRM_REQUIRED/);
@@ -75,6 +94,7 @@ test('employee lifecycle preserves Orders, enforces DB guards, and limits audit/
     assert.equal((await asRole('service_role',null,'select public.pos_employee_password_result($1,true) result',[ticket]))[0].result,true);
     assert.equal((await q('select event from pos_employee_audit where id=$1',[ticket]))[0].event,'password_succeeded');
     assert.equal((await asRole('authenticated',employee,'select * from pos_employee_audit')).length,0);
+    assert.ok((await asRole('authenticated',admin,'select * from pos_employee_audit')).length>0);
     await assert.rejects(asRole('authenticated',admin,'delete from pos_employee_audit'),/permission denied/);
     await assert.rejects(asRole('anon',null,'select public.pos_employee_list()'),/permission denied/);
     const invalid=await user({version:2,orders:'operator'});
@@ -84,8 +104,42 @@ test('employee lifecycle preserves Orders, enforces DB guards, and limits audit/
     const funcs=await q("select prosecdef,proconfig from pg_proc where proname like 'pos_employee_%'");
     assert.equal(funcs.length,5);
     for(const f of funcs) { assert.equal(f.prosecdef,true);assert.ok(f.proconfig.includes('search_path=""')); }
-    assert.match(await sql('supabase/migrations/202609300002_pos_employee_management.sql'),/pg_advisory_xact_lock/);
+    const rls=(await q("select relrowsecurity,relforcerowsecurity from pg_class where oid='public.pos_employee_audit'::regclass"))[0];
+    assert.deepEqual(rls,{relrowsecurity:true,relforcerowsecurity:true});
+    for(const signature of ['pos_employee_list()','pos_employee_lookup(text)','pos_employee_save(uuid,text,text,boolean)','pos_employee_password_request(uuid,boolean)']) {
+      const grants=(await q("select has_function_privilege('anon',$1,'EXECUTE') anon,has_function_privilege('authenticated',$1,'EXECUTE') authenticated,has_function_privilege('service_role',$1,'EXECUTE') service",['public.'+signature]))[0];
+      assert.deepEqual(grants,{anon:false,authenticated:true,service:false});
+    }
+    // PGlite queues transactions: verify both possible cross-admin save orders.
+    // This is NOT a multi-connection lock-contention test.
+    for(const first of ['left','right']) {
+      const left=await user({version:1,pos:'admin'}), right=await user({version:1,pos:'admin'});
+      const winner=first==='left'?left:right, loser=first==='left'?right:left;
+      await call(winner,'pos_employee_save',[loser,'Demoted','cashier',true]);
+      await assert.rejects(call(loser,'pos_employee_save',[winner,'Should stay admin','cashier',true]),/POS_ACCESS_DENIED/);
+      await assert.rejects(call(loser,'pos_employee_save',[winner,'Should stay active','admin',false]),/POS_ACCESS_DENIED/);
+      assert.equal((await q('select role from pos_profiles where id=$1',[winner]))[0].role,'admin');
+      await call(admin,'pos_employee_save',[winner,'Finished fixture','cashier',false]);
+    }
+    assert.match(await sql('supabase/migrations/202610010001_pos_employee_management.sql'),/pg_advisory_xact_lock/);
   } finally { await db.close(); }
+});
+
+test('employee migration has a unique version and preserves explicit security boundaries', async () => {
+  const files=await readdir(new URL('../supabase/migrations/',import.meta.url));
+  const sqlFiles=files.filter(name=>/^\d+_.+\.sql$/.test(name));
+  assert.equal(new Set(sqlFiles.map(name=>name.split('_')[0])).size,sqlFiles.length);
+  assert.deepEqual(files.filter(name=>name.endsWith('_pos_employee_management.sql')),['202610010001_pos_employee_management.sql']);
+  assert.ok(files.includes('202609300002_pos_register_last_close.sql'));
+  const migration=await readFile(new URL('../supabase/migrations/202610010001_pos_employee_management.sql',import.meta.url),'utf8');
+  assert.match(migration,/begin;[\s\S]*commit;/);
+  assert.doesNotMatch(migration,/(?:insert\s+into|update|delete\s+from|alter\s+table)\s+public\.profiles\b/i);
+  assert.doesNotMatch(migration,/create\s+or\s+replace|disable\s+row\s+level/i);
+  const save=migration.slice(migration.indexOf('create function public.pos_employee_save'),migration.indexOf('-- Audit before'));
+  assert.ok(save.indexOf('pg_advisory_xact_lock')<save.indexOf('where id=actor'));
+  assert.match(save,/SELF_DEMOTION_FORBIDDEN/);
+  assert.match(save,/old\.role='admin'[\s\S]*not exists[\s\S]*LAST_ADMIN/);
+  assert.match(save,/for update[\s\S]*EMPLOYEE_OPEN_SESSION/);
 });
 
 test('service credential stays server-only and existing accounts never receive create-form passwords', async () => {
@@ -93,9 +147,14 @@ test('service credential stays server-only and existing accounts never receive c
   const service=await load('lib/supabase/admin.ts'), actions=await load('app/(pos)/employees/actions.ts');
   assert.match(service,/import "server-only"/);
   assert.match(service,/process\.env\.SUPABASE_SERVICE_ROLE_KEY/);
-  assert.doesNotMatch(service,/NEXT_PUBLIC_.*KEY/);
+  assert.doesNotMatch(service,/NEXT_PUBLIC_.*SERVICE/);
   assert.match(actions,/if \(!id\) \{/);
   assert.match(actions,/app_metadata: \{\}/);
   assert.doesNotMatch(actions,/console\.|deleteUser|listUsers|raw_app_meta_data/);
+  const password=actions.slice(actions.indexOf('export async function resetEmployeePassword'));
+  assert.ok(password.indexOf('await requireAdmin()')<password.indexOf('pos_employee_password_request'));
+  assert.ok(password.indexOf('pos_employee_password_request')<password.indexOf('admin.auth.admin.updateUserById'));
+  assert.match(password,/confirmed[\s\S]*shared_confirm/);
+  assert.match(password,/if \(authorized.error \|\| !authorized.data\) fail/);
   for(const file of ['app/components/employee-form.tsx','app/(pos)/employees/page.tsx']) assert.doesNotMatch(await load(file),/supabase\/admin|SERVICE_ROLE_KEY/);
 });

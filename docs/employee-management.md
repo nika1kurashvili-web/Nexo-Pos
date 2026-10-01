@@ -7,7 +7,12 @@ Repository implementation only: do not automatically deploy SQL or create live u
 The existing 001 profile migration, explicit membership prerequisite and Phase 1
 002 must already be installed. Register visibility migration 202609300001 stays
 unchanged. Review and test the NEW
-`supabase/migrations/202609300002_pos_employee_management.sql` in staging first.
+`supabase/migrations/202610010001_pos_employee_management.sql` in staging first.
+This unique version replaces the never-applied local employee migration numbered
+202609300002. The already-applied `202609300002_pos_register_last_close.sql` is
+unchanged and must not be rerun. Only the new employee file should be applied,
+manually as a BYPASSRLS/superuser owner, once prerequisites are present and the
+employee objects are absent. Do not replay the entire migrations directory.
 It creates one POS audit table, five functions, one index and one admin-only audit
 SELECT policy. It changes no existing policy or row on installation. Apply SQL
 manually before releasing the updated application. Without it, /employees fails
@@ -62,10 +67,16 @@ existing POS tables FORCE RLS. RLS is never disabled.
 
 A transaction advisory lock serializes employee saves, then target profile row
 locking serializes deactivation with pos_require_actor's financial share lock.
-Self-deactivation, removing the last active admin, and deactivation while a target
+Self-deactivation, self-demotion even when another active admin exists, removing
+the last active admin, and deactivation while a target
 has an open session are rejected in SQL. No session is automatically closed.
 These guards apply to the provided management RPC; trusted database owners can
 always bypass application workflows with direct SQL and must not do so casually.
+The advisory lock is acquired before rechecking the caller's active admin role.
+Thus cross-admin saves are serialized: after one admin demotes/deactivates the
+other, the waiting caller loses authorization. Self-protection leaves a sole
+remaining admin unable to remove themselves; the explicit last-admin check is
+retained as defense in depth. No cross-request membership cache is used in SQL.
 
 ## Auth API boundaries and passwords
 
@@ -100,6 +111,10 @@ not production or staging. Fixtures never contact a Supabase project. Tests cove
 POS-only creation, explicit dual membership, Orders preservation, role changes,
 disable/reactivate, open-session rejection, last-admin/self-disable guards,
 invalid metadata rollback, cashier/anon denial and password audit grants.
+The suite now applies register last-close before employees and verifies that its
+function definition and existing memberships remain unchanged. It also checks
+migration version uniqueness and both serialized cross-admin save orders.
+PGlite queues transactions; this is not a real multi-connection contention test.
 
 Verify the external Admin API flow manually in staging with disposable accounts
 before production release. Never run a production build beside the dev server.

@@ -6,7 +6,7 @@ do $$ begin
   if not exists(select 1 from pg_catalog.pg_roles where rolname=current_user and (rolsuper or rolbypassrls)) then
     raise exception 'Apply as BYPASSRLS/superuser owner';
   end if;
-  if public.nexo_provisioning_version() <> 1 then raise exception 'Membership prerequisite required'; end if;
+  if public.nexo_provisioning_version() is distinct from 1 then raise exception 'Membership prerequisite required'; end if;
 end $$;
 
 create table public.pos_employee_audit (
@@ -61,6 +61,8 @@ create function public.pos_employee_save(p_user uuid,p_name text,p_role text,p_a
 language plpgsql security definer set search_path='' as $$
 declare actor uuid:=auth.uid(); old public.pos_profiles; marker jsonb; metadata jsonb;
 begin
+  -- Serialize all employee saves before checking the caller or counting admins.
+  -- A waiting request rechecks authorization after the preceding save commits.
   perform pg_catalog.pg_advisory_xact_lock(726394120038::bigint);
   if not exists(select 1 from public.pos_profiles where id=actor and active and role='admin') then
     raise exception 'POS_ACCESS_DENIED' using errcode='42501';
@@ -72,6 +74,7 @@ begin
   if not found then raise exception 'AUTH_USER_NOT_FOUND'; end if;
   select * into old from public.pos_profiles where id=p_user for update;
   if p_user=actor and not p_active then raise exception 'SELF_DISABLE_FORBIDDEN'; end if;
+  if p_user=actor and p_role<>'admin' then raise exception 'SELF_DEMOTION_FORBIDDEN'; end if;
   if old.role='admin' and old.active and (not p_active or p_role<>'admin') and
     not exists(select 1 from public.pos_profiles where active and role='admin' and id<>p_user) then
     raise exception 'LAST_ADMIN';
