@@ -147,6 +147,8 @@ test('cash withdrawals: real SQL, financial invariants, isolation and compatibil
       assert.deepEqual(await q("select pg_get_functiondef(oid) definition from pg_proc where proname in ('pos_complete_sale','pos_record_repayment','pos_open_register') order by proname"),financeDefinitions);
     });
     await t.test('metadata: forced RLS, restrict FKs, definer paths and limited grants',async()=>{
+      const inspection=await q(await load('supabase/inspection/cash_withdrawals_post_migration.sql'));
+      assert.ok(inspection.length>=15); assert.ok(inspection.every(row=>row.result==='PASS'));
       assert.deepEqual((await q("select relrowsecurity,relforcerowsecurity from pg_class where oid='pos_cash_withdrawals'::regclass"))[0],{relrowsecurity:true,relforcerowsecurity:true});
       for(const fk of await q("select confdeltype from pg_constraint where conrelid='pos_cash_withdrawals'::regclass and contype='f'")) assert.equal(fk.confdeltype,'r');
       const funcs=await q("select prosecdef,proconfig from pg_proc where proname in ('pos_session_cash_totals','pos_record_cash_withdrawal','pos_close_register','pos_register_state','pos_register_session_report')");
