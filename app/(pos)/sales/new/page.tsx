@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { measureSaleQuery } from "@/lib/performance";
 import { requirePosProfile } from "@/lib/auth/server";
 import { posClient } from "@/lib/pos/server";
 import { Notice } from "@/app/components/pos-forms";
@@ -37,43 +38,43 @@ export default async function NewSalePage({
     { data: customerData, error: customerError },
     { data: customerPriceData, error: customerPriceError },
   ] = await Promise.all([
-    client
+    measureSaleQuery("session", client
       .from("pos_register_sessions")
       .select("id")
       .eq("cashier_id", profile.id)
       .eq("status", "open")
       .order("opened_at", { ascending: false })
-      .limit(1),
+      .limit(1)),
 
-    client
+    measureSaleQuery("products", client
       .from("products" as never)
       .select("id,name,sku,price,active")
       .eq("active", true)
-      .order("name"),
+      .order("name")),
 
-    client
+    measureSaleQuery("variants", client
       .from("product_variants" as never)
       .select("id,product_id,name,sku,price,active")
       .eq("active", true)
-      .order("name"),
+      .order("name")),
 
-    client
+    measureSaleQuery("payment_methods", client
       .from("pos_payment_methods")
       .select("code,name")
       .eq("active", true)
-      .order("name"),
+      .order("name")),
 
-    client
+    measureSaleQuery("customers", client
       .from("pos_business_customers")
       .select("id,name,tax_code")
       .eq("active", true)
       .order("name")
-      .limit(500),
+      .limit(500)),
 
-    client
+    measureSaleQuery("customer_prices", client
       .from("pos_customer_prices")
       .select("customer_id,product_id,variant_id,price")
-      .limit(10000),
+      .limit(10000)),
   ]);
 
   const session = sessionData?.[0] ?? null;

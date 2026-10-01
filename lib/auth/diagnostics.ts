@@ -6,7 +6,7 @@ export type AuthDiagnosticContext = {
 };
 
 export type AuthStep = "configuration" | "client.create" | "cookies.write" |
-  "signInWithPassword" | "getUser" | "pos_profiles.select" | "signOut" | "login.request" | "login.result";
+  "signInWithPassword" | "getUser" | "getClaims" | "pos_profiles.select" | "signOut" | "login.request" | "login.result";
 
 const knownCodes = new Set([
   "invalid_credentials", "email_not_confirmed", "user_banned", "user_not_found",

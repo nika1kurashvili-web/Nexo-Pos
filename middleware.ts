@@ -47,7 +47,24 @@ export async function middleware(request: NextRequest) {
     return finish(isLogin ? undefined : "/login?error=configuration");
   }
 
-  const access = await getPosAccess(client, context);
+  // Protected pages/actions own the live POS membership check. Middleware only
+  // verifies/refreshes the session; claims never grant a POS role or membership.
+  let access;
+  if (isLogin) {
+    // Keep login routing and revoked-membership cookie cleanup in one place.
+    access = await getPosAccess(client, context);
+  } else {
+    try {
+      const { data, error } = await client.auth.getClaims();
+      if (!error && data?.claims.sub) return finish();
+      if (error && error.name !== "AuthSessionMissingError") {
+        authDiagnostic(context, "getClaims", "failed", error);
+      }
+    } catch (error) {
+      authDiagnostic(context, "getClaims", "failed", error);
+    }
+    access = { status: "unauthenticated" as const };
+  }
   if (access.status === "allowed") {
     return finish(isLogin && request.method === "GET" ? "/" : undefined);
   }

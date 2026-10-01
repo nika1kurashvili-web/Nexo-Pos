@@ -4,6 +4,10 @@ import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { setTimeout as delay } from "node:timers/promises";
 import { after, before, test } from "node:test";
+import { cp, mkdtemp, symlink } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+import { generateKeyPairSync, sign } from "node:crypto";
 
 // Runs real Next.js pages, middleware, cookies, and Server Actions against a
 // deterministic HTTP Supabase substitute. Never uses a real account or database.
@@ -15,6 +19,12 @@ let authFailure = null;
 let logoutFailure = false;
 let ordersQueries = 0;
 let refreshes = 0;
+let profileQueries = 0;
+let financialCalls = 0;
+let userQueries = 0;
+const catalogQueries = [];
+const { privateKey, publicKey } = generateKeyPairSync("ec", { namedCurve: "P-256" });
+const jwk = { ...publicKey.export({ format: "jwk" }), kid: "local-test-key", alg: "ES256", use: "sig" };
 let app;
 let origin;
 let appOutput = "";
@@ -70,8 +80,14 @@ const supabase = createServer(async (req, res) => {
     return send(200, newSession(account));
   }
   if (url.pathname === "/auth/v1/user") {
+    userQueries++;
     return record ? send(200, record.user) : send(401, { msg: "Invalid token" });
   }
+  if (url.pathname === "/auth/v1/.well-known/jwks.json") return send(200, { keys: [jwk] });
+  if (["products", "product_variants", "pos_register_sessions", "pos_payment_methods", "pos_business_customers", "pos_customer_prices"].some(table => url.pathname === `/rest/v1/${table}`)) {
+    catalogQueries.push(url.pathname);
+  }
+  if (["/rest/v1/products", "/rest/v1/product_variants"].includes(url.pathname)) return send(200, []);
   if (url.pathname === "/auth/v1/logout") {
     logoutScopes.push(url.searchParams.get("scope"));
     if (logoutFailure) return send(503, { msg: "Unavailable" });
@@ -80,6 +96,7 @@ const supabase = createServer(async (req, res) => {
     return;
   }
   if (url.pathname === "/rest/v1/pos_profiles") {
+    profileQueries++;
     if (profileFailure) return send(profileFailure.status ?? 503, profileFailure.body ?? { message: "Unavailable" });
     if (!record || url.searchParams.get("id") !== `eq.${record.user.id}`) return send(403, { message: "Forbidden" });
     return send(200, record.profile ? [record.profile] : []);
@@ -90,9 +107,15 @@ const supabase = createServer(async (req, res) => {
   }
   if (url.pathname === "/rest/v1/pos_register_sessions") return send(200, registerSessions.filter((s) => s.cashier_id === record?.user.id));
   if (url.pathname === "/rest/v1/pos_registers") return send(200, [{ id: registerId, name: "მთავარი სალარო", active: true }]);
+  if (url.pathname === "/rest/v1/rpc/pos_register_state") return send(200, [{
+    register_id: registerId, register_name: "Test register", register_active: true,
+    session_id: null, cashier_id: null, cashier_name: null, opened_at: null,
+    opening_cash: null, cash_payments: null, expected_cash: null, is_own: false, can_close: false,
+  }]);
   if (["/rest/v1/pos_business_customers", "/rest/v1/pos_customer_prices", "/rest/v1/pos_sales", "/rest/v1/pos_customer_transactions"].includes(url.pathname)) return send(200, []);
   if (url.pathname === "/rest/v1/pos_payment_methods") return send(200, [{code:"cash", name:"ნაღდი", active:true}]);
   if (["/rest/v1/rpc/pos_open_register", "/rest/v1/rpc/pos_close_register"].includes(url.pathname)) {
+    financialCalls++;
     if (!record) return send(401, {});
     let body = "";
     for await (const chunk of req) body += chunk;
@@ -118,8 +141,18 @@ before(async () => {
   const appPort = portProbe.address().port;
   await new Promise((resolve) => portProbe.close(resolve));
   origin = `http://127.0.0.1:${appPort}`;
-  app = spawn(process.execPath, ["node_modules/next/dist/bin/next", "start", "--hostname", "127.0.0.1", "--port", String(appPort)], {
-    env: { ...process.env, NEXT_PUBLIC_SUPABASE_URL: `http://127.0.0.1:${supabase.address().port}`, NEXT_PUBLIC_SUPABASE_ANON_KEY: "test-anon-key-not-a-secret" },
+  // Never read the repository's .env or reuse its .next. An isolated development
+  // server lets these HTTP integration tests coexist with the user's dev server.
+  const sandbox = await mkdtemp(join(tmpdir(), "nexo-auth-test-"));
+  for (const path of ["app", "lib", "middleware.ts", "next.config.ts", "tsconfig.json", "next-env.d.ts", "package.json"]) {
+    await cp(resolve(path), join(sandbox, path), { recursive: true });
+  }
+  await symlink(resolve("node_modules"), join(sandbox, "node_modules"), "junction");
+  const env = Object.fromEntries(Object.entries(process.env).filter(([name]) =>
+    /^(PATH|PATHEXT|SYSTEMROOT|WINDIR|TEMP|TMP|HOME|USERPROFILE|APPDATA|LOCALAPPDATA)$/i.test(name)));
+  app = spawn(process.execPath, [resolve("node_modules/next/dist/bin/next"), "dev", "--hostname", "127.0.0.1", "--port", String(appPort)], {
+    cwd: sandbox,
+    env: { ...env, NEXT_TELEMETRY_DISABLED: "1", NEXT_PUBLIC_SUPABASE_URL: `http://127.0.0.1:${supabase.address().port}`, NEXT_PUBLIC_SUPABASE_ANON_KEY: "test-anon-key-not-a-secret" },
     stdio: ["ignore", "pipe", "pipe"], windowsHide: true,
   });
   app.stdout.on("data", (data) => { appOutput += data; });
@@ -128,7 +161,7 @@ before(async () => {
     if (app.exitCode !== null) throw new Error(appOutput);
     try {
       if ((await fetch(`${origin}/login`)).ok) return;
-    } catch { /* Wait for the production server. */ }
+    } catch { /* Wait for the isolated mock-backed server. */ }
     await delay(100);
   }
   throw new Error(`Server did not become ready: ${appOutput}`);
@@ -184,6 +217,48 @@ function redirectTo(response, path) {
   assert.equal(new URL(response.headers.get("location"), origin).pathname + new URL(response.headers.get("location"), origin).search, path);
 }
 
+async function protectedRedirect(response, path) {
+  if ([303, 307].includes(response.status)) return redirectTo(response, path);
+  // Streaming Server Components can encode the redirect in the response body.
+  const html = await response.text();
+  assert.match(html, /NEXT_REDIRECT/);
+  assert.ok(html.includes(path));
+}
+
+for (const [name, reason] of [["missing", "denied"], ["inactive", "inactive"], ["orders-admin", "denied"]]) {
+  test(`valid Auth session for ${name} is denied by the protected server guard`, async () => {
+    const client = browser();
+    const session = newSession(users.get(`${name}@example.test`));
+    client.jar.set("nexo-pos-auth", `base64-${Buffer.from(JSON.stringify(session)).toString("base64url")}`);
+    await protectedRedirect(await client.request("/"), `/login?error=${reason}`);
+    redirectTo(await client.request(`/login?error=${reason}`), `/login?error=${reason}`);
+    assert.equal(client.jar.size, 0);
+    assert.equal((await client.request(`/login?error=${reason}`)).status, 200);
+  });
+}
+
+test("protected financial Server Action rejects deactivated and unauthenticated users", async () => {
+  const client = browser();
+  redirectTo(await client.login("cashier"), "/");
+  const html = await (await client.request("/")).text();
+  const form = [...html.matchAll(/<form\b[^>]*>([\s\S]*?)<\/form>/g)].find(m => m[1].includes('name="opening_cash"'));
+  assert.ok(form, "Open-register form must be present in the mock dashboard");
+  const action = form[1].match(/name="(\$ACTION_ID_[^"]+)"/);
+  assert.ok(action);
+  const body = new FormData();
+  body.set(action[1], ""); body.set("register_id", registerId); body.set("opening_cash", "10");
+  const before = financialCalls;
+  const profile = users.get("cashier@example.test").profile;
+  profile.active = false;
+  try {
+    redirectTo(await client.request("/", { method: "POST", headers: { origin }, body }), "/login?error=inactive");
+    assert.equal(financialCalls, before);
+    client.jar.clear();
+    redirectTo(await client.request("/", { method: "POST", headers: { origin }, body }), "/login");
+    assert.equal(financialCalls, before);
+  } finally { profile.active = true; }
+});
+
 test("all application routes redirect unauthenticated visitors", async () => {
   const client = browser();
   for (const route of ["/", "/sales", "/reports", "/employees"]) redirectTo(await client.request(route), "/login");
@@ -198,7 +273,7 @@ test("active admin can log in, see the account dashboard, then log out", async (
   assert.equal(home.status, 200);
   assert.match(home.headers.get("cache-control"), /no-store/);
   const html = await home.text();
-  for (const text of ["Test admin", "ადმინისტრატორი", "Nexo POS", "გამოსვლა", "მომხმარებელი", "admin"]) assert.ok(html.includes(text));
+  for (const text of ["Test admin", "ადმინისტრატორი", "Nexo POS", "გასვლა", "მომხმარებელი", "admin"]) assert.ok(html.includes(text), `Missing ${text}`);
   for (const route of ["/sales", "/reports", "/employees"]) assert.equal((await client.request(route)).status, 200);
   redirectTo(await client.request("/login"), "/");
   redirectTo(await client.submit("/"), "/login");
@@ -251,13 +326,39 @@ test("SSR refresh propagates cookies and keeps active POS user signed in", async
   assert.equal((await client.request("/")).status, 200);
 });
 
-test("account dashboard has no register or sales forms", async () => {
+test("protected render deduplicates POS membership across layout, page, and posClient", async () => {
   const client = browser();
   redirectTo(await client.login("cashier"), "/");
+  const before = profileQueries;
   const html = await (await client.request("/")).text();
-  assert.equal([...html.matchAll(/name="\$ACTION_ID_/g)].length, 1, "Only logout is available");
-  assert.ok(!html.includes('name="opening_cash"'));
-  assert.ok(!html.includes('name="actual_cash"'));
+  assert.ok(html.includes("Test cashier"));
+  assert.equal(profileQueries - before, 1, "Exactly one live membership query per protected render");
+});
+
+test("asymmetric signed claims avoid middleware Auth network lookup but keep live server authorization", async () => {
+  const client = browser();
+  const account = users.get("cashier@example.test");
+  const session = newSession(account);
+  const encode = value => Buffer.from(JSON.stringify(value)).toString("base64url");
+  const input = `${encode({ alg: "ES256", typ: "JWT", kid: jwk.kid })}.${encode({ sub: account.user.id, exp: session.expires_at, aud: "authenticated", role: "authenticated" })}`;
+  session.access_token = `${input}.${sign("sha256", Buffer.from(input), { key: privateKey, dsaEncoding: "ieee-p1363" }).toString("base64url")}`;
+  sessions.set(session.access_token, account);
+  client.jar.set("nexo-pos-auth", `base64-${encode(session)}`);
+  const beforeUser = userQueries, beforeProfile = profileQueries;
+  const html = await (await client.request("/")).text();
+  assert.ok(html.includes("Test cashier"));
+  assert.equal(userQueries - beforeUser, 1, "Only authoritative server getUser calls Auth");
+  assert.equal(profileQueries - beforeProfile, 1);
+});
+
+test("new-sale loader preserves its six queries and one authoritative membership check", async () => {
+  const client = browser();
+  redirectTo(await client.login("cashier"), "/");
+  const before = profileQueries, start = catalogQueries.length;
+  const html = await (await client.request("/sales/new")).text();
+  assert.ok(html.includes("სალარო დახურულია"));
+  assert.equal(profileQueries - before, 1);
+  assert.deepEqual(catalogQueries.slice(start).sort(), ["products", "product_variants", "pos_register_sessions", "pos_payment_methods", "pos_business_customers", "pos_customer_prices"].map(name => `/rest/v1/${name}`).sort());
 });
 
 for (const [name, reason, message] of [
@@ -286,8 +387,10 @@ test("deactivating an already logged-in user denies the next request", async () 
   const profile = users.get("cashier@example.test").profile;
   profile.active = false;
   try {
-    redirectTo(await client.request("/sales"), "/login?error=inactive");
+    await protectedRedirect(await client.request("/sales"), "/login?error=inactive");
+    redirectTo(await client.request("/login?error=inactive"), "/login?error=inactive");
     assert.equal(client.jar.size, 0);
+    assert.equal((await client.request("/login?error=inactive")).status, 200, "No redirect loop after clearing denied session");
   } finally { profile.active = true; }
 });
 
