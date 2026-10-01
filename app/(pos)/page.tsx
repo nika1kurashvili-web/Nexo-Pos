@@ -6,6 +6,7 @@ import { Notice, SaveButton } from "@/app/components/pos-forms";
 import { RegisterOpenForm } from "@/app/components/register-open-form";
 import { openRegister, closeRegister } from "./actions";
 import { registerState } from "@/lib/pos/register-cash";
+import { CashWithdrawalForm } from "@/app/components/cash-withdrawal-form";
 
 export const dynamic = "force-dynamic";
 
@@ -113,6 +114,9 @@ export default async function PosHomePage({
                   {money(r.cash_payments)}
                 </dd>
 
+                <dt>გაცემული თანხა</dt>
+                <dd>{money(r.cash_withdrawals)}</dd>
+
                 <dt>
                   მოსალოდნელი ნაღდი სალაროში
                 </dt>
@@ -141,6 +145,8 @@ export default async function PosHomePage({
                   სალარო.
                 </p>
               )}
+
+              {r.is_own && r.session_id && <CashWithdrawalForm key={r.session_id} sessionId={r.session_id} />}
 
               {r.can_close && (
                 <form

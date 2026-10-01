@@ -12,6 +12,7 @@ export type RegisterState = {
   opened_at: string | null;
   opening_cash: Decimal | null;
   cash_payments: Decimal | null;
+  cash_withdrawals: Decimal | null;
   expected_cash: Decimal | null;
 
   is_own: boolean;
@@ -23,8 +24,9 @@ export type RegisterState = {
 };export type RegisterReport = {
   registers: { id: string; name: string }[];
   cashiers: { id: string; full_name: string }[];
-  sessions: (RegisterSession & { register_name: string; cashier_name: string; expected_cash: Decimal | null })[];
+  sessions: (RegisterSession & { register_name: string; cashier_name: string; cash_payments: Decimal; cash_withdrawals: Decimal; expected_cash: Decimal | null })[];
 };
+export type CashWithdrawal = { id: string; request_id: string; request_fingerprint: string; session_id: string; register_id: string; actor_id: string; actor_name: string; register_name: string; amount: Decimal; reason: string; created_at: string };
 type Stamp = { created_at: string; updated_at: string };
 export type Customer = Stamp & { id: string; name: string; tax_code: string | null; phone: string | null; address: string | null; email: string | null; notes: string | null; active: boolean };
 export type Register = Stamp & { id: string; name: string; active: boolean };
@@ -37,6 +39,7 @@ export type SaleItem = { id: string; sale_id: string; line_number: number; targe
 export type CustomerTransaction = { id: string; customer_id: string; sale_id: string; payment_id: string | null; kind: "sale_charge" | "sale_payment" | "repayment"; amount: Decimal; created_at: string };
 type Table<Row> = { Row: Row; Insert: Partial<Row>; Update: Partial<Row>; Relationships: [] };
 export type PosTables = {
+  pos_cash_withdrawals: Table<CashWithdrawal>;
   pos_employee_audit: Table<{ id: string; actor_id: string; target_id: string; event: string; before_state: Json | null; after_state: Json | null; created_at: string }>;
   pos_business_customers: Table<Customer>;
   pos_registers: Table<Register>;
@@ -50,6 +53,7 @@ export type PosTables = {
 };
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 export type PosFunctions = {
+  pos_record_cash_withdrawal: { Args: { p_request: string; p_session: string; p_amount: string; p_reason: string }; Returns: string };
   pos_employee_list: { Args: Record<string, never>; Returns: PosEmployee[] };
   pos_employee_lookup: { Args: { p_email: string }; Returns: { id: string; has_pos: boolean } | null };
   pos_employee_save: { Args: { p_user: string; p_name: string; p_role: string; p_active: boolean }; Returns: string };
