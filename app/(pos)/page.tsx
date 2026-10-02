@@ -102,10 +102,7 @@ export default async function PosHomePage({
                 <header className="register-card-head">
                   <div>
                     <h2>{r.register_name}</h2>
-                    <p className="muted">
-                      სალარო გახსნილია
-                      {r.opened_at ? ` · ${fmt(r.opened_at)}` : ""}
-                    </p>
+                    <p className="muted">სალარო გახსნილია</p>
                   </div>
                   <span className="badge badge-success">
                     <span className="dot" aria-hidden="true" />
@@ -113,12 +110,15 @@ export default async function PosHomePage({
                   </span>
                 </header>
 
-                <p className="register-owner">
-                  <span className="muted">ვინ გახსნა</span>
-                  <strong>{r.cashier_name ?? "—"}</strong>
-                </p>
-
                 <div className="stat-grid">
+                  <div className="stat stat-info">
+                    <span>ვინ გახსნა</span>
+                    <strong>{r.cashier_name ?? "—"}</strong>
+                  </div>
+                  <div className="stat stat-info">
+                    <span>გახსნის დრო</span>
+                    <strong>{r.opened_at ? fmt(r.opened_at) : "—"}</strong>
+                  </div>
                   <div className="stat">
                     <span>საწყისი ნაღდი</span>
                     <strong>{money(r.opening_cash)}</strong>
@@ -130,6 +130,10 @@ export default async function PosHomePage({
                   <div className="stat">
                     <span>გაცემული თანხა</span>
                     <strong>{money(r.cash_withdrawals)}</strong>
+                  </div>
+                  <div className="stat">
+                    <span>ნაღდით დაბრუნებული</span>
+                    <strong>{money(r.cash_refunds ?? 0)}</strong>
                   </div>
                   <div className="stat stat-highlight">
                     <span>მოსალოდნელი ნაღდი სალაროში</span>

@@ -60,7 +60,7 @@ export default async function RegisterSessionsReport({ searchParams }: { searchP
     <section className="panel">
       <h2>სესიების ისტორია</h2>
       <div className="table-scroll"><table>
-        <thead><tr>{["სალარო", "მოლარე / ვინ გახსნა", "გახსნა", "საწყისი თანხა", "ნაღდი შემოსავალი", "გაცემული თანხა", "სტატუსი", "დახურვა", "მოსალოდნელი თანხა", "ფაქტობრივი თანხა", "სხვაობა", "დახურვის შენიშვნა"].map(label => <th key={label} scope="col">{label}</th>)}</tr></thead>
+        <thead><tr>{["სალარო", "მოლარე / ვინ გახსნა", "გახსნა", "საწყისი თანხა", "ნაღდი შემოსავალი", "გაცემული თანხა", "ნაღდით დაბრუნებული", "სტატუსი", "დახურვა", "მოსალოდნელი თანხა", "ფაქტობრივი თანხა", "სხვაობა", "დახურვის შენიშვნა"].map(label => <th key={label} scope="col">{label}</th>)}</tr></thead>
         <tbody>{sessions?.map(s => {
           const expected = s.expected_cash;
           return <tr key={s.id}>
@@ -69,6 +69,7 @@ export default async function RegisterSessionsReport({ searchParams }: { searchP
             <td>{time(s.opened_at)}</td><td>{money(s.opening_cash)}</td>
             <td>{money(s.cash_payments)}</td>
             <td>{money(s.cash_withdrawals)} <Link href={`/reports/cash-withdrawals?session=${s.id}`}>გაცემების ისტორია</Link></td>
+            <td>{money(s.cash_refunds ?? 0)}</td>
             <td>{s.status === "open" ? "ღია" : "დახურული"}</td><td>{time(s.closed_at)}</td>
             <td>{money(expected)}{s.status === "open" && " (მიმდინარე)"}</td>
             <td>{money(s.actual_closing_cash)}</td><td>{money(s.cash_difference)}</td><td>{s.closing_note || "—"}</td>

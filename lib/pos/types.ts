@@ -13,6 +13,7 @@ export type RegisterState = {
   opening_cash: Decimal | null;
   cash_payments: Decimal | null;
   cash_withdrawals: Decimal | null;
+  cash_refunds: Decimal | null;
   expected_cash: Decimal | null;
 
   is_own: boolean;
@@ -24,7 +25,7 @@ export type RegisterState = {
 };export type RegisterReport = {
   registers: { id: string; name: string }[];
   cashiers: { id: string; full_name: string }[];
-  sessions: (RegisterSession & { register_name: string; cashier_name: string; cash_payments: Decimal; cash_withdrawals: Decimal; expected_cash: Decimal | null })[];
+  sessions: (RegisterSession & { register_name: string; cashier_name: string; cash_payments: Decimal; cash_withdrawals: Decimal; cash_refunds: Decimal; expected_cash: Decimal | null })[];
 };
 export type CashWithdrawal = { id: string; request_id: string; request_fingerprint: string; session_id: string; register_id: string; actor_id: string; actor_name: string; register_name: string; amount: Decimal; reason: string; created_at: string };
 type Stamp = { created_at: string; updated_at: string };
@@ -36,10 +37,21 @@ export type CustomerPrice = Stamp & { id: string; customer_id: string; product_i
 export type Payment = { id: string; request_id: string; request_fingerprint: string | null; sale_id: string; session_id: string; received_by: string; method_code: string; method_name: string; kind: "sale_payment" | "repayment"; amount: Decimal; created_at: string };
 export type Sale = { id: string; sale_number: number; request_id: string; request_fingerprint: string; cashier_id: string; cashier_name: string; session_id: string; sale_type: "retail" | "wholesale"; customer_id: string | null; customer_name: string | null; customer_tax_code: string | null; tracking_code: string | null; subtotal: Decimal; discount_total: Decimal; total: Decimal; paid_total: Decimal; debt_amount: Decimal; status: "completed"; created_at: string };
 export type SaleItem = { id: string; sale_id: string; line_number: number; target_kind: "product" | "variant"; product_id: string | number | null; variant_id: string | number | null; sku: string | null; product_name: string; variant_name: string | null; base_unit_price: Decimal; adjusted_unit_price: Decimal; quantity: Decimal; discount_percent: Decimal; final_unit_price: Decimal; line_total: Decimal; created_at: string };
-export type CustomerTransaction = { id: string; customer_id: string; sale_id: string; payment_id: string | null; kind: "sale_charge" | "sale_payment" | "repayment"; amount: Decimal; created_at: string };
+export type CustomerTransaction = { id: string; customer_id: string; sale_id: string; payment_id: string | null; kind: "sale_charge" | "sale_payment" | "repayment" | "return_credit"; return_id: string | null; amount: Decimal; created_at: string };
+export type PosReturn = { id: string; return_number: number; request_id: string; request_fingerprint: string; sale_id: string; session_id: string; actor_id: string; actor_name: string; reason: string; total_amount: Decimal; debt_reduction: Decimal; refund_total: Decimal; created_at: string };
+export type PosReturnItem = { id: string; return_id: string; sale_item_id: string; quantity: Decimal; amount: Decimal; created_at: string };
+export type PosReturnRefund = { id: string; return_id: string; session_id: string; method_code: string; method_name: string; amount: Decimal; created_at: string };
+export type ReturnSaleDetails = {
+  sale: { id: string; sale_number: number; sale_type: "retail" | "wholesale"; customer_name: string | null; total: Decimal; created_at: string };
+  current_debt: Decimal;
+  items: { id: string; line_number: number; sku: string | null; product_name: string; variant_name: string | null; quantity: Decimal; final_unit_price: Decimal; line_total: Decimal; returned_quantity: Decimal; returned_amount: Decimal }[];
+} | null;
 type Table<Row> = { Row: Row; Insert: Partial<Row>; Update: Partial<Row>; Relationships: [] };
 export type PosTables = {
   pos_cash_withdrawals: Table<CashWithdrawal>;
+  pos_returns: Table<PosReturn>;
+  pos_return_items: Table<PosReturnItem>;
+  pos_return_refunds: Table<PosReturnRefund>;
   pos_employee_audit: Table<{ id: string; actor_id: string; target_id: string; event: string; before_state: Json | null; after_state: Json | null; created_at: string }>;
   pos_business_customers: Table<Customer>;
   pos_registers: Table<Register>;
@@ -53,6 +65,8 @@ export type PosTables = {
 };
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 export type PosFunctions = {
+  pos_complete_return: { Args: { p_request: string; p_session: string; p_sale: string; p_items: Json; p_refunds: Json; p_reason: string }; Returns: string };
+  pos_return_sale_details: { Args: { p_number: number }; Returns: ReturnSaleDetails };
   pos_record_cash_withdrawal: { Args: { p_request: string; p_session: string; p_amount: string; p_reason: string }; Returns: string };
   pos_employee_list: { Args: Record<string, never>; Returns: PosEmployee[] };
   pos_employee_lookup: { Args: { p_email: string }; Returns: { id: string; has_pos: boolean } | null };

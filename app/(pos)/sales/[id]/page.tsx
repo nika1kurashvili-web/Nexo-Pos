@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requirePosProfile } from "@/lib/auth/server";
 import { posClient, money } from "@/lib/pos/server";
 import { Notice } from "@/app/components/pos-forms";
+import type { PosReturnItem } from "@/lib/pos/types";
 import { ReceiptPrintButton } from "@/app/components/receipt-print-button";
 
 export const dynamic = "force-dynamic";
@@ -45,6 +46,27 @@ export default async function SaleDetailsPage({
     notFound();
   }
 
+  // Returns made against this sale (RLS: admin sees all, a cashier sees returns
+  // they made or returns against their own sales).
+  const { data: returns, error: returnsError } = sale
+    ? await client
+        .from("pos_returns")
+        .select("*")
+        .eq("sale_id", id)
+        .order("created_at")
+    : { data: null, error: null };
+
+  const returnIds = (returns ?? []).map((r) => r.id);
+
+  const { data: returnItemRows, error: returnItemsError } = returnIds.length
+    ? await client
+        .from("pos_return_items")
+        .select("*")
+        .in("return_id", returnIds)
+    : { data: null, error: null };
+
+  const returnItems: PosReturnItem[] = returnItemRows ?? [];
+
   // Sale totals are immutable snapshots. Sum later repayments in cents so
   // initial split payments are not counted twice and amounts retain 2 decimals.
   const toCents = (amount: string | number) =>
@@ -56,9 +78,19 @@ export default async function SaleDetailsPage({
   const currentPaidCents = sale && repaymentCents !== null
     ? toCents(sale.paid_total) + repaymentCents
     : null;
+  const returnDebtCents = (returns ?? []).reduce(
+    (sum, r) => sum + toCents(r.debt_reduction), 0);
+  const returnedTotalCents = (returns ?? []).reduce(
+    (sum, r) => sum + toCents(r.total_amount), 0);
   const currentDebtCents = sale && currentPaidCents !== null
-    ? Math.max(0, toCents(sale.total) - currentPaidCents)
+    ? Math.max(0, toCents(sale.total) - currentPaidCents - returnDebtCents)
     : null;
+  const itemName = new Map(
+    (items ?? []).map((item) => [
+      item.id,
+      item.product_name + (item.variant_name ? ` / ${item.variant_name}` : ""),
+    ]),
+  );
 
   return (
     <>
@@ -68,11 +100,17 @@ export default async function SaleDetailsPage({
 
       <h1>გაყიდვა №{sale?.sale_number}</h1>
 
-      <Notice loadError={Boolean(saleError || itemsError || paymentsError)} />
+      <Notice loadError={Boolean(saleError || itemsError || paymentsError || returnsError || returnItemsError)} />
 
       {sale && (
         <>
 <div className="receipt-actions">
+  <Link
+    href={`/returns?number=${sale.sale_number}`}
+    className="button secondary"
+  >
+    დაბრუნება
+  </Link>
   <ReceiptPrintButton />
 </div>
 
@@ -324,6 +362,50 @@ export default async function SaleDetailsPage({
             )}
           </section>
 
+          {(returns?.length ?? 0) > 0 && (
+            <section className="panel">
+              <h2>დაბრუნებები</h2>
+
+              <div className="table-scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>№</th>
+                      <th>თარიღი</th>
+                      <th>ვინ გააფორმა</th>
+                      <th>დაბრუნებული ნივთები</th>
+                      <th>თანხა</th>
+                      <th>ვალის შემცირება</th>
+                      <th>დაბრუნებული თანხა</th>
+                      <th>მიზეზი</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {returns?.map((r) => (
+                      <tr key={r.id}>
+                        <td>#{r.return_number}</td>
+                        <td>
+                          {new Date(r.created_at).toLocaleString("ka-GE", { timeZone: "Asia/Tbilisi" })}
+                        </td>
+                        <td>{r.actor_name}</td>
+                        <td className="wrap">
+                          {returnItems
+                            .filter((ri) => ri.return_id === r.id)
+                            .map((ri) => `${itemName.get(ri.sale_item_id) ?? "—"} × ${Number(ri.quantity)}`)
+                            .join(", ")}
+                        </td>
+                        <td><strong>{money(r.total_amount)}</strong></td>
+                        <td>{money(r.debt_reduction)}</td>
+                        <td>{money(r.refund_total)}</td>
+                        <td className="wrap">{r.reason}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
+
           <section className="panel">
             <h2>შეჯამება</h2>
 
@@ -350,6 +432,9 @@ export default async function SaleDetailsPage({
                   <dt>შემდგომი დაფარვები</dt>
                   <dd>{money(repaymentCents === null ? null : repaymentCents / 100)}</dd>
 
+                  <dt>დაბრუნებით შემცირებული ვალი</dt>
+                  <dd>{money(returnDebtCents / 100)}</dd>
+
                   <dt>სულ გადახდილია</dt>
                   <dd>{money(currentPaidCents === null ? null : currentPaidCents / 100)}</dd>
 
@@ -363,6 +448,13 @@ export default async function SaleDetailsPage({
 
                   <dt>დავალიანება</dt>
                   <dd>{money(sale.debt_amount)}</dd>
+                </>
+              )}
+
+              {returnedTotalCents > 0 && (
+                <>
+                  <dt>დაბრუნებული ნივთების ღირებულება</dt>
+                  <dd>{money(returnedTotalCents / 100)}</dd>
                 </>
               )}
             </dl>

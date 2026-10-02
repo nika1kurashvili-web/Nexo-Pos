@@ -35,6 +35,10 @@ export default function PosNavigation({
       href: "/sales",
       label: "გაყიდვები",
     },
+    {
+      href: "/returns",
+      label: "დაბრუნება",
+    },
   ];
 
   const adminItems: NavItem[] = [
