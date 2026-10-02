@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { posClient } from "@/lib/pos/server";
+import { rpcClient } from "@/lib/pos/server";
 import { safeAuthError } from "@/lib/auth/diagnostics";
 import type { Json } from "@/lib/pos/types";
 
@@ -24,7 +24,7 @@ const errorCodes: Record<string, string> = {
 };
 
 export async function completeReturn(form: FormData) {
-  const client = await posClient();
+  const client = await rpcClient();
 
   const requestId = text(form, "request_id");
   const session = text(form, "session_id");

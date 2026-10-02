@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth/server";
-import { posClient } from "@/lib/pos/server";
+import { posClient, rpcClient } from "@/lib/pos/server";
 import { parsePrice } from "@/lib/pos/import-prices";
 import { safeAuthError } from "@/lib/auth/diagnostics";
 import type { Json } from "@/lib/pos/types";
@@ -177,7 +177,7 @@ export async function closeRegister(form: FormData) {
   finish(error, "/");
 }
 export async function completeSale(form: FormData) {
-  const client = await posClient();
+  const client = await rpcClient();
 
   const requestId = text(form, "request_id");
   const session = text(form, "session_id");
