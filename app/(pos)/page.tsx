@@ -34,20 +34,43 @@ export default async function PosHomePage({
         r.session_id === null,
     ) ?? [];
 
+  const fmt = (value: string) =>
+    new Date(value).toLocaleString("ka-GE", {
+      timeZone: "Asia/Tbilisi",
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+
+  const hour = Number(
+    new Intl.DateTimeFormat("en-GB", {
+      hour: "numeric",
+      hour12: false,
+      timeZone: "Asia/Tbilisi",
+    }).format(new Date()),
+  );
+
+  const greeting =
+    hour < 5 ? "ღამე მშვიდობისა" : hour < 12 ? "დილა მშვიდობისა" : hour < 18 ? "გამარჯობა" : "საღამო მშვიდობისა";
+
   return (
     <>
-      <section className="panel account-panel">
-        <h1 lang="en">Nexo POS</h1>
+      <section className="hero">
+        <div>
+          <p className="eyebrow">მომხმარებელი</p>
+          <h1>
+            {greeting}, {profile.full_name}
+          </h1>
+          <p className="hero-sub">
+            <span className="badge badge-brand">{roleLabels[profile.role]}</span>
+            <span lang="en">Nexo POS</span> — მოლარის სისტემა
+          </p>
+        </div>
 
-        <p>მოგესალმებით მოლარის სისტემაში.</p>
-
-        <dl className="profile-summary">
-          <dt>მომხმარებელი</dt>
-          <dd>{profile.full_name}</dd>
-
-          <dt>როლი</dt>
-          <dd>{roleLabels[profile.role]}</dd>
-        </dl>
+        {own ? (
+          <Link href="/sales/new" className="button primary hero-action">
+            + ახალი გაყიდვა
+          </Link>
+        ) : null}
       </section>
 
       <Notice
@@ -66,137 +89,131 @@ export default async function PosHomePage({
         </section>
       ) : (
         <>
-          {open.map((r) => (
-            <section
-              className="panel"
-              key={r.session_id}
-            >
-              <h2>
-                სალარო გახსნილია —{" "}
-                {r.register_name}
-              </h2>
+          {open.length > 0 && (
+            <h2 className="section-title">ღია სალაროები</h2>
+          )}
 
-              <dl className="profile-summary">
-                <dt>სალარო</dt>
-                <dd>{r.register_name}</dd>
+          <div className="register-grid">
+            {open.map((r) => (
+              <section
+                className={`panel register-card${r.is_own ? " own" : ""}`}
+                key={r.session_id}
+              >
+                <header className="register-card-head">
+                  <div>
+                    <h2>{r.register_name}</h2>
+                    <p className="muted">
+                      სალარო გახსნილია
+                      {r.opened_at ? ` · ${fmt(r.opened_at)}` : ""}
+                    </p>
+                  </div>
+                  <span className="badge badge-success">
+                    <span className="dot" aria-hidden="true" />
+                    ღია
+                  </span>
+                </header>
 
-                <dt>ვინ გახსნა</dt>
-                <dd>
-                  {r.cashier_name ?? "—"}
-                </dd>
-
-                <dt>
-                  გახსნის თარიღი და დრო
-                </dt>
-                <dd>
-                  {r.opened_at
-                    ? new Date(
-                        r.opened_at,
-                      ).toLocaleString(
-                        "ka-GE",
-                        {
-                          timeZone:
-                            "Asia/Tbilisi",
-                        },
-                      )
-                    : "—"}
-                </dd>
-
-                <dt>საწყისი ნაღდი</dt>
-                <dd>
-                  {money(r.opening_cash)}
-                </dd>
-
-                <dt>
-                  ნაღდი გადახდები ამ სესიაში
-                </dt>
-                <dd>
-                  {money(r.cash_payments)}
-                </dd>
-
-                <dt>გაცემული თანხა</dt>
-                <dd>{money(r.cash_withdrawals)}</dd>
-
-                <dt>
-                  მოსალოდნელი ნაღდი სალაროში
-                </dt>
-                <dd>
-                  <strong>
-                    {money(r.expected_cash)}
-                  </strong>
-                </dd>
-              </dl>
-
-              {r.is_own ? (
-                <p>
-                  <Link
-                    href="/sales/new"
-                    className="button primary"
-                  >
-                    ახალი გაყიდვა
-                  </Link>
+                <p className="register-owner">
+                  <span className="muted">ვინ გახსნა</span>
+                  <strong>{r.cashier_name ?? "—"}</strong>
                 </p>
-              ) : (
-                <p>
-                  სესია სხვა თანამშრომელს
-                  ეკუთვნის. გაყიდვისთვის
-                  გამოიყენეთ თქვენი ღია სესია
-                  ან გახსენით თავისუფალი
-                  სალარო.
-                </p>
-              )}
 
-              {r.is_own && r.session_id && <CashWithdrawalForm key={r.session_id} sessionId={r.session_id} />}
+                <div className="stat-grid">
+                  <div className="stat">
+                    <span>საწყისი ნაღდი</span>
+                    <strong>{money(r.opening_cash)}</strong>
+                  </div>
+                  <div className="stat">
+                    <span>ნაღდი გადახდები ამ სესიაში</span>
+                    <strong>{money(r.cash_payments)}</strong>
+                  </div>
+                  <div className="stat">
+                    <span>გაცემული თანხა</span>
+                    <strong>{money(r.cash_withdrawals)}</strong>
+                  </div>
+                  <div className="stat stat-highlight">
+                    <span>მოსალოდნელი ნაღდი სალაროში</span>
+                    <strong>{money(r.expected_cash)}</strong>
+                  </div>
+                </div>
 
-              {r.can_close && (
-                <form
-                  action={closeRegister}
-                  className="data-form"
-                >
-                  <input
-                    type="hidden"
-                    name="session_id"
-                    value={
-                      r.session_id ?? ""
-                    }
-                  />
+                {r.is_own ? (
+                  <div className="register-actions">
+                    <Link
+                      href="/sales/new"
+                      className="button primary"
+                    >
+                      ახალი გაყიდვა
+                    </Link>
 
-                  <label>
-                    ფაქტობრივი ნაღდი თანხა
-                    დახურვისას
-                    <input
-                      name="actual_cash"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      defaultValue={
-                        r.expected_cash ===
-                        null
-                          ? ""
-                          : Number(
-                              r.expected_cash,
-                            ).toFixed(2)
-                      }
-                      required
-                    />
-                  </label>
+                    {r.session_id && (
+                      <CashWithdrawalForm
+                        key={r.session_id}
+                        sessionId={r.session_id}
+                      />
+                    )}
+                  </div>
+                ) : (
+                  <p className="notice info">
+                    სესია სხვა თანამშრომელს
+                    ეკუთვნის. გაყიდვისთვის
+                    გამოიყენეთ თქვენი ღია სესია
+                    ან გახსენით თავისუფალი
+                    სალარო.
+                  </p>
+                )}
 
-                  <label>
-                    შენიშვნა
-                    <textarea
-                      name="note"
-                      maxLength={2000}
-                      placeholder="არასავალდებულო"
-                    />
-                  </label>
+                {r.can_close && (
+                  <details className="close-register">
+                    <summary>სალაროს დახურვა</summary>
 
-                  <SaveButton>
-                    სალაროს დახურვა
-                  </SaveButton>
-                </form>
-              )}
-            </section>
-          ))}
+                    <form
+                      action={closeRegister}
+                      className="data-form"
+                    >
+                      <input
+                        type="hidden"
+                        name="session_id"
+                        value={r.session_id ?? ""}
+                      />
+
+                      <label>
+                        ფაქტობრივი ნაღდი თანხა
+                        დახურვისას
+                        <input
+                          name="actual_cash"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          defaultValue={
+                            r.expected_cash === null
+                              ? ""
+                              : Number(
+                                  r.expected_cash,
+                                ).toFixed(2)
+                          }
+                          required
+                        />
+                      </label>
+
+                      <label>
+                        შენიშვნა
+                        <textarea
+                          name="note"
+                          maxLength={2000}
+                          placeholder="არასავალდებულო"
+                        />
+                      </label>
+
+                      <SaveButton>
+                        სალაროს დახურვა
+                      </SaveButton>
+                    </form>
+                  </details>
+                )}
+              </section>
+            ))}
+          </div>
 
           {!own && (
             <section className="panel">

@@ -256,7 +256,7 @@ export async function completeSale(form: FormData) {
       safeAuthError(error)
     );
 
-    redirect("/sales/new?error=failed");
+    redirect(`/sales/new?error=failed&request=${requestId}`);
   }
 
   revalidatePath("/", "layout");
@@ -342,6 +342,10 @@ export async function importCustomerPricesExcel(
     redirect(`${path}?error=invalid`);
   }
 
+  if (file.size > 4 * 1024 * 1024) {
+    redirect(`${path}?error=too_large`);
+  }
+
   const fileName = file.name.toLowerCase();
 
   if (
@@ -355,6 +359,7 @@ export async function importCustomerPricesExcel(
     sku: string;
     price: string;
   }> = [];
+  let skipped = 0;
 
   try {
     const buffer = Buffer.from(
@@ -424,6 +429,7 @@ export async function importCustomerPricesExcel(
           price: string;
         } => row !== null
       );
+    skipped = rawRows.length - rows.length;
   } catch (error) {
     console.error(
       "[nexo-pos-price-import]",
@@ -433,8 +439,13 @@ export async function importCustomerPricesExcel(
     redirect(`${path}?error=invalid`);
   }
 
-  if (rows.length === 0 || rows.length > 5000) {
+  if (rows.length === 0) {
     redirect(`${path}?error=invalid`);
+  }
+
+  // DB ფუნქცია ერთ ჯერზე მაქსიმუმ 2000 სტრიქონს იღებს.
+  if (rows.length > 2000) {
+    redirect(`${path}?error=too_many`);
   }
 
   const { data, error } = await client.rpc(
@@ -459,6 +470,6 @@ export async function importCustomerPricesExcel(
   redirect(
     `${path}?saved=1&imported=${encodeURIComponent(
       String(data ?? rows.length)
-    )}`
+    )}&skipped=${skipped}`
   );
 }

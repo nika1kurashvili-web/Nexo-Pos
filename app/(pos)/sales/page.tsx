@@ -83,9 +83,9 @@ export default async function SalesPage({
 
   if (product) {
     const safeProduct = product
+      .replaceAll(/[,()"\\]/g, " ")
       .replaceAll("%", "\\%")
-      .replaceAll("_", "\\_")
-      .replaceAll(",", " ");
+      .replaceAll("_", "\\_");
 
     const { data: matchingItems } = await client
       .from("pos_sale_items")
@@ -162,11 +162,18 @@ export default async function SalesPage({
   }
 
   if (from) {
-    query = query.gte("created_at", `${from}T00:00:00`);
+    query = query.gte("created_at", `${from}T00:00:00+04:00`);
   }
 
   if (to) {
-    query = query.lt("created_at", `${to}T23:59:59.999`);
+    const nextDay = new Date(`${to}T00:00:00Z`);
+    nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+    if (!Number.isNaN(nextDay.getTime())) {
+      query = query.lt(
+        "created_at",
+        `${nextDay.toISOString().slice(0, 10)}T00:00:00+04:00`
+      );
+    }
   }
 
   /*
@@ -322,7 +329,7 @@ export default async function SalesPage({
                   <td>
                     {new Date(
                       sale.created_at
-                    ).toLocaleString("ka-GE")}
+                    ).toLocaleString("ka-GE", { timeZone: "Asia/Tbilisi" })}
                   </td>
 
                   <td>{sale.cashier_name}</td>

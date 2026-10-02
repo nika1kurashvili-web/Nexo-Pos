@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { measureSaleQuery } from "@/lib/performance";
+import { fetchAll } from "@/lib/pos/paginate";
 import { requirePosProfile } from "@/lib/auth/server";
 import { posClient } from "@/lib/pos/server";
 import { Notice } from "@/app/components/pos-forms";
@@ -25,6 +26,7 @@ export default async function NewSalePage({
   searchParams: Promise<{
     error?: string;
     saved?: string;
+    request?: string;
   }>;
 }) {
   const profile = await requirePosProfile();
@@ -46,17 +48,21 @@ export default async function NewSalePage({
       .order("opened_at", { ascending: false })
       .limit(1)),
 
-    measureSaleQuery("products", client
+    measureSaleQuery("products", fetchAll<CatalogRow>((from, to) => client
       .from("products" as never)
       .select("id,name,sku,price,active")
       .eq("active", true)
-      .order("name")),
+      .order("name")
+      .order("id")
+      .range(from, to))),
 
-    measureSaleQuery("variants", client
+    measureSaleQuery("variants", fetchAll<VariantRow>((from, to) => client
       .from("product_variants" as never)
       .select("id,product_id,name,sku,price,active")
       .eq("active", true)
-      .order("name")),
+      .order("name")
+      .order("id")
+      .range(from, to))),
 
     measureSaleQuery("payment_methods", client
       .from("pos_payment_methods")
@@ -64,17 +70,19 @@ export default async function NewSalePage({
       .eq("active", true)
       .order("name")),
 
-    measureSaleQuery("customers", client
+    measureSaleQuery("customers", fetchAll<{ id: string; name: string; tax_code: string | null }>((from, to) => client
       .from("pos_business_customers")
       .select("id,name,tax_code")
       .eq("active", true)
       .order("name")
-      .limit(500)),
+      .order("id")
+      .range(from, to))),
 
-    measureSaleQuery("customer_prices", client
+    measureSaleQuery("customer_prices", fetchAll<{ customer_id: string; product_id: string | null; variant_id: string | null; price: string | number }>((from, to) => client
       .from("pos_customer_prices")
       .select("customer_id,product_id,variant_id,price")
-      .limit(10000)),
+      .order("id")
+      .range(from, to))),
   ]);
 
   const session = sessionData?.[0] ?? null;
@@ -206,6 +214,29 @@ export default async function NewSalePage({
   const requestId = crypto.randomUUID();
   const notice = await searchParams;
 
+  /*
+   * თუ წინა გაგზავნამ "failed" დააბრუნა, შესაძლებელია გაყიდვა მაინც ჩაწერილიყო
+   * (მაგ. ქსელის შეცდომა პასუხის დაბრუნებამდე). ვამოწმებთ ამავე request_id-ით,
+   * რომ მოლარემ იგივე გაყიდვა ხელახლა არ გაატაროს.
+   */
+  let recoveredSale: { id: string; sale_number: number | string } | null = null;
+
+  if (
+    notice.error === "failed" &&
+    notice.request &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      notice.request
+    )
+  ) {
+    const { data: existing } = await client
+      .from("pos_sales")
+      .select("id,sale_number")
+      .eq("request_id", notice.request)
+      .maybeSingle();
+
+    recoveredSale = existing ?? null;
+  }
+
   return (
     <>
       <div>
@@ -218,7 +249,14 @@ export default async function NewSalePage({
         </p>
       </div>
 
-      <Notice error={notice.error} />
+      {recoveredSale ? (
+        <p className="notice success" role="status">
+          წინა გაყიდვა მაინც დაფიქსირდა (№{String(recoveredSale.sale_number)}). ხელახლა არ გაატაროთ.{" "}
+          <Link href={`/sales/${recoveredSale.id}`}>გაყიდვის ნახვა</Link>
+        </p>
+      ) : (
+        <Notice error={notice.error} />
+      )}
       {!notice.error && notice.saved && <p className="notice success" role="status">გაყიდვა წარმატებით დაფიქსირდა</p>}
 
       <SaleTerminal

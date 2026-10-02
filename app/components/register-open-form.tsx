@@ -90,35 +90,40 @@ export function RegisterOpenForm({
       </label>
 
       {selected && (
-        <div>
-          {lastAmount !== null &&
-          selected.last_closed_at ? (
-            <>
-              <strong>
-                ბოლო დახურვა:{" "}
-                {formatMoney(lastAmount)}
-              </strong>
+        lastAmount !== null && selected.last_closed_at ? (
+          <>
+            <div className="stat-grid">
+              <div className="stat stat-info">
+                <span>ბოლო დახურვა</span>
+                <strong>{formatMoney(lastAmount)}</strong>
+              </div>
+              <div className="stat stat-info">
+                <span>დახურვის დრო</span>
+                <strong>
+                  {new Date(
+                    selected.last_closed_at
+                  ).toLocaleString("ka-GE", {
+                    timeZone: "Asia/Tbilisi",
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  })}
+                </strong>
+              </div>
+            </div>
 
-              {actual === null && (
-                <p>
-                  ეს არის მოსალოდნელი თანხა,
-                  რადგან ფაქტობრივი დახურვის თანხა
-                  არ არის დაფიქსირებული.
-                </p>
-              )}
-
-              <p>
-                {new Date(
-                  selected.last_closed_at
-                ).toLocaleString("ka-GE", {
-                  timeZone: "Asia/Tbilisi",
-                })}
+            {actual === null && (
+              <p className="muted">
+                ეს არის მოსალოდნელი თანხა,
+                რადგან ფაქტობრივი დახურვის თანხა
+                არ არის დაფიქსირებული.
               </p>
-            </>
-          ) : (
-            <p>წინა დახურვის მონაცემი არ არის.</p>
-          )}
-        </div>
+            )}
+          </>
+        ) : (
+          <p className="notice info">
+            წინა დახურვის მონაცემი არ არის.
+          </p>
+        )
       )}
 
       <SaveButton>

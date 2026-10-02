@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/auth/server";
 import { money, posClient } from "@/lib/pos/server";
+import { fetchAll } from "@/lib/pos/paginate";
 import {
   CustomerFields,
   Notice,
@@ -23,6 +24,8 @@ export default async function CustomerPage({
   searchParams: Promise<{
     error?: string;
     saved?: string;
+    imported?: string;
+    skipped?: string;
   }>;
 }) {
   const profile = await requireAdmin();
@@ -39,7 +42,6 @@ export default async function CustomerPage({
     { data: prices, error: priceError },
     { data: balance, error: balanceError },
     { data: transactions, error: ledgerError },
-    { data: sales, error: salesError },
     { data: paymentMethods, error: paymentError },
     { data: sessionData, error: sessionError },
   ] = await Promise.all([
@@ -70,18 +72,6 @@ export default async function CustomerPage({
       .limit(500),
 
     client
-      .from("pos_sales")
-      .select(
-        "id,sale_number,total,paid_total,debt_amount,created_at"
-      )
-      .eq("customer_id", id)
-      .eq("sale_type", "wholesale")
-      .order("created_at", {
-        ascending: false,
-      })
-      .limit(200),
-
-    client
       .from("pos_payment_methods")
       .select("code,name")
       .eq("active", true)
@@ -108,33 +98,67 @@ export default async function CustomerPage({
 
   const session = sessionData?.[0] ?? null;
 
-  const debtBySale = new Map<string, number>();
+  /*
+   * დარჩენილი ვალი ითვლება თითო გაყიდვის სრული ledger-იდან (არა ბოლო 500 ჩანაწერიდან),
+   * და მხოლოდ იმ გაყიდვებზე, რომლებსაც თავიდან ვალი ჰქონდათ.
+   */
+  const { data: debtCandidates, error: debtSalesError } = await fetchAll<{
+    id: string;
+    sale_number: number | string;
+    total: string | number;
+    paid_total: string | number;
+    debt_amount: string | number;
+    created_at: string;
+  }>((from, to) =>
+    client
+      .from("pos_sales")
+      .select("id,sale_number,total,paid_total,debt_amount,created_at")
+      .eq("customer_id", id)
+      .eq("sale_type", "wholesale")
+      .gt("debt_amount", 0)
+      .order("created_at", { ascending: false })
+      .order("id")
+      .range(from, to)
+  );
 
-  for (const transaction of transactions ?? []) {
-    if (!transaction.sale_id) {
-      continue;
+  const debtBySale = new Map<string, number>();
+  let debtLedgerError: unknown = null;
+
+  for (let i = 0; i < debtCandidates.length; i += 50) {
+    const ids = debtCandidates.slice(i, i + 50).map((sale) => sale.id);
+
+    const { data: rows, error: ledgerChunkError } = await fetchAll<{
+      sale_id: string | null;
+      amount: string | number;
+    }>((from, to) =>
+      client
+        .from("pos_customer_transactions")
+        .select("sale_id,amount")
+        .in("sale_id", ids)
+        .order("created_at")
+        .order("id")
+        .range(from, to)
+    );
+
+    if (ledgerChunkError) {
+      debtLedgerError = ledgerChunkError;
+      break;
     }
 
-    const current =
-      debtBySale.get(transaction.sale_id) ?? 0;
-
-    debtBySale.set(
-      transaction.sale_id,
-      current + Number(transaction.amount)
-    );
+    for (const transaction of rows) {
+      if (!transaction.sale_id) continue;
+      const cents = Math.round(Number(transaction.amount) * 100);
+      debtBySale.set(
+        transaction.sale_id,
+        (debtBySale.get(transaction.sale_id) ?? 0) + cents
+      );
+    }
   }
 
-  const debtSales = (sales ?? [])
+  const debtSales = debtCandidates
     .map((sale) => ({
       ...sale,
-      remainingDebt: Math.max(
-        0,
-        Math.round(
-          ((debtBySale.get(sale.id) ?? 0) +
-            Number.EPSILON) *
-            100
-        ) / 100
-      ),
+      remainingDebt: Math.max(0, (debtBySale.get(sale.id) ?? 0) / 100),
     }))
     .filter((sale) => sale.remainingDebt > 0);
 
@@ -142,7 +166,8 @@ export default async function CustomerPage({
     priceError ||
       balanceError ||
       ledgerError ||
-      salesError ||
+      debtSalesError ||
+      debtLedgerError ||
       paymentError ||
       sessionError
   );

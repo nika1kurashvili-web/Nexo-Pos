@@ -68,7 +68,7 @@ export default async function RegisterSessionsReport({ searchParams }: { searchP
             <td>{s.cashier_name}</td>
             <td>{time(s.opened_at)}</td><td>{money(s.opening_cash)}</td>
             <td>{money(s.cash_payments)}</td>
-            <td>{money(s.cash_withdrawals)} <Link href={`/reports/register-sessions/${s.id}`}>გაცემების ისტორია</Link></td>
+            <td>{money(s.cash_withdrawals)} <Link href={`/reports/cash-withdrawals?session=${s.id}`}>გაცემების ისტორია</Link></td>
             <td>{s.status === "open" ? "ღია" : "დახურული"}</td><td>{time(s.closed_at)}</td>
             <td>{money(expected)}{s.status === "open" && " (მიმდინარე)"}</td>
             <td>{money(s.actual_closing_cash)}</td><td>{money(s.cash_difference)}</td><td>{s.closing_note || "—"}</td>

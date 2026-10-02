@@ -81,7 +81,7 @@ export default async function SaleDetailsPage({
     <strong>NEXO.GE</strong>
     <span>ქვითარი #{sale.sale_number}</span>
     <span>
-      {new Date(sale.created_at).toLocaleString("ka-GE")}
+      {new Date(sale.created_at).toLocaleString("ka-GE", { timeZone: "Asia/Tbilisi" })}
     </span>
   </div>
 
@@ -210,7 +210,7 @@ export default async function SaleDetailsPage({
 
               <dt>თარიღი</dt>
               <dd>
-                {new Date(sale.created_at).toLocaleString("ka-GE")}
+                {new Date(sale.created_at).toLocaleString("ka-GE", { timeZone: "Asia/Tbilisi" })}
               </dd>
 
               <dt>მოლარე</dt>
@@ -311,7 +311,7 @@ export default async function SaleDetailsPage({
                       <td>
                         {new Date(
                           payment.created_at
-                        ).toLocaleString("ka-GE")}
+                        ).toLocaleString("ka-GE", { timeZone: "Asia/Tbilisi" })}
                       </td>
                     </tr>
                   ))}
