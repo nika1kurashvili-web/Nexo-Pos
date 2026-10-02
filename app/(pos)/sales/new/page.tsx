@@ -38,7 +38,6 @@ export default async function NewSalePage({
     { data: variantData, error: variantError },
     { data: paymentData, error: paymentError },
     { data: customerData, error: customerError },
-    { data: customerPriceData, error: customerPriceError },
   ] = await Promise.all([
     measureSaleQuery("session", client
       .from("pos_register_sessions")
@@ -78,11 +77,6 @@ export default async function NewSalePage({
       .order("id")
       .range(from, to))),
 
-    measureSaleQuery("customer_prices", fetchAll<{ customer_id: string; product_id: string | null; variant_id: string | null; price: string | number }>((from, to) => client
-      .from("pos_customer_prices")
-      .select("customer_id,product_id,variant_id,price")
-      .order("id")
-      .range(from, to))),
   ]);
 
   const session = sessionData?.[0] ?? null;
@@ -92,8 +86,7 @@ export default async function NewSalePage({
     productError ||
     variantError ||
     paymentError ||
-    customerError ||
-    customerPriceError
+    customerError
   ) {
     return (
       <>
@@ -196,21 +189,6 @@ export default async function NewSalePage({
     })
   );
 
-  const customerPrices = (customerPriceData ?? []).map(
-    (price) => ({
-      customerId: price.customer_id,
-      productId:
-        price.product_id === null
-          ? null
-          : String(price.product_id),
-      variantId:
-        price.variant_id === null
-          ? null
-          : String(price.variant_id),
-      price: Number(price.price),
-    })
-  );
-
   const requestId = crypto.randomUUID();
   const notice = await searchParams;
 
@@ -266,7 +244,6 @@ export default async function NewSalePage({
         sessionId={session.id}
         requestId={requestId}
         customers={customers}
-        customerPrices={customerPrices}
       />
     </>
   );

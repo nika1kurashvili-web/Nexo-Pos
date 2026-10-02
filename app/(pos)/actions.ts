@@ -7,6 +7,7 @@ import { posClient } from "@/lib/pos/server";
 import { parsePrice } from "@/lib/pos/import-prices";
 import { safeAuthError } from "@/lib/auth/diagnostics";
 import type { Json } from "@/lib/pos/types";
+import { fetchAll } from "@/lib/pos/paginate";
 import * as XLSX from "xlsx";
 
 const text = (form: FormData, name: string) =>
@@ -472,4 +473,31 @@ export async function importCustomerPricesExcel(
       String(data ?? rows.length)
     )}&skipped=${skipped}`
   );
+}
+
+
+// Wholesale prices are loaded only for the customer being served, instead of
+// shipping every customer's price list with the page.
+export async function loadCustomerPrices(customerId: string) {
+  if (!uuid(customerId)) return { ok: false as const, prices: [] };
+  const client = await posClient();
+  const { data, error } = await fetchAll<{
+    product_id: string | null;
+    variant_id: string | null;
+    price: string | number;
+  }>((from, to) => client
+    .from("pos_customer_prices")
+    .select("product_id,variant_id,price")
+    .eq("customer_id", customerId)
+    .order("id")
+    .range(from, to));
+  if (error) return { ok: false as const, prices: [] };
+  return {
+    ok: true as const,
+    prices: data.map((row) => ({
+      productId: row.product_id === null ? null : String(row.product_id),
+      variantId: row.variant_id === null ? null : String(row.variant_id),
+      price: Number(row.price),
+    })),
+  };
 }

@@ -382,14 +382,14 @@ test("asymmetric signed claims avoid middleware Auth network lookup but keep liv
   assert.equal(profileQueries - beforeProfile, 1);
 });
 
-test("new-sale loader preserves its six queries and one authoritative membership check", async () => {
+test("new-sale loader makes its five catalog queries (customer prices load lazily) and one authoritative membership check", async () => {
   const client = browser();
   redirectTo(await client.login("cashier"), "/");
   const before = profileQueries, start = catalogQueries.length;
   const html = await (await client.request("/sales/new")).text();
   assert.ok(html.includes("სალარო დახურულია"));
   assert.equal(profileQueries - before, 1);
-  assert.deepEqual(catalogQueries.slice(start).sort(), ["products", "product_variants", "pos_register_sessions", "pos_payment_methods", "pos_business_customers", "pos_customer_prices"].map(name => `/rest/v1/${name}`).sort());
+  assert.deepEqual(catalogQueries.slice(start).sort(), ["products", "product_variants", "pos_register_sessions", "pos_payment_methods", "pos_business_customers"].map(name => `/rest/v1/${name}`).sort());
 });
 
 for (const [name, reason, message] of [

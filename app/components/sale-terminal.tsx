@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { completeSale } from "@/app/(pos)/actions";
+import { completeSale, loadCustomerPrices } from "@/app/(pos)/actions";
 
 type CatalogItem = {
   kind: "product" | "variant";
@@ -26,7 +26,6 @@ type Customer = {
 };
 
 type CustomerPrice = {
-  customerId: string;
   productId: string | null;
   variantId: string | null;
   price: number;
@@ -51,7 +50,6 @@ type Props = {
   sessionId: string;
   requestId: string;
   customers: Customer[];
-  customerPrices: CustomerPrice[];
 };
 
 const moneyInput = (value: string) => value.replace(/^0+(?=\d)/, "");
@@ -72,7 +70,6 @@ export default function SaleTerminal({
   sessionId,
   requestId,
   customers,
-  customerPrices,
 }: Props) {
   const [saleType, setSaleType] =
     useState<"retail" | "wholesale">("retail");
@@ -81,6 +78,11 @@ export default function SaleTerminal({
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [trackingCode, setTrackingCode] = useState("");
+  // მხოლოდ არჩეული კლიენტის ფასები იტვირთება (არა ყველა კლიენტის ერთად).
+  const [customerPrices, setCustomerPrices] = useState<CustomerPrice[]>([]);
+  const [pricesStatus, setPricesStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const priceRequest = useRef(0);
+  const deferredSearch = useDeferredValue(search);
 
   const [payments, setPayments] = useState<PaymentRow[]>([
     {
@@ -111,26 +113,34 @@ export default function SaleTerminal({
     setNextPaymentId(2);
   }
 
+  const priceByKey = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const row of customerPrices) {
+      if (row.variantId !== null) map.set(`v:${row.variantId}`, row.price);
+      else if (row.productId !== null) map.set(`p:${row.productId}`, row.price);
+    }
+    return map;
+  }, [customerPrices]);
+
+  const priceKey = (item: CatalogItem) =>
+    item.kind === "variant" ? `v:${item.id}` : `p:${item.id}`;
+
   function wholesalePrice(item: CatalogItem) {
     if (!customerId) return null;
-
-    const found = customerPrices.find((price) => {
-      if (price.customerId !== customerId) {
-        return false;
-      }
-
-      if (item.kind === "variant") {
-        return price.variantId === item.id;
-      }
-
-      return (
-        price.productId === item.id &&
-        price.variantId === null
-      );
-    });
-
-    return found ? found.price : null;
+    return priceByKey.get(priceKey(item)) ?? null;
   }
+
+  // ძებნის ტექსტი ერთხელ მზადდება და არა ყოველ კლავიშზე ყველა ნივთისთვის.
+  const searchText = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const item of items) {
+      map.set(
+        `${item.kind}-${item.id}`,
+        [item.name, item.variantName ?? "", item.sku ?? ""].join(" ").toLowerCase()
+      );
+    }
+    return map;
+  }, [items]);
 
   const availableItems = useMemo(() => {
     if (saleType === "retail") {
@@ -141,63 +151,51 @@ export default function SaleTerminal({
       return [];
     }
 
-    return items
-      .map((item) => {
-        const price = customerPrices.find((row) => {
-          if (row.customerId !== customerId) {
-            return false;
-          }
-
-          if (item.kind === "variant") {
-            return row.variantId === item.id;
-          }
-
-          return (
-            row.productId === item.id &&
-            row.variantId === null
-          );
-        });
-
-        if (!price) {
-          return null;
-        }
-
-        return {
-          ...item,
-          price: price.price,
-        };
-      })
-      .filter(
-        (item): item is CatalogItem => item !== null
-      );
-  }, [
-    items,
-    saleType,
-    customerId,
-    customerPrices,
-  ]);
+    const result: CatalogItem[] = [];
+    for (const item of items) {
+      const price = priceByKey.get(priceKey(item));
+      if (price !== undefined) result.push({ ...item, price });
+    }
+    return result;
+  }, [items, saleType, customerId, priceByKey]);
 
   const results = useMemo(() => {
-    const query = search.trim().toLowerCase();
+    const query = deferredSearch.trim().toLowerCase();
 
     if (!query) {
       return availableItems.slice(0, 30);
     }
 
-    return availableItems
-      .filter((item) => {
-        const searchable = [
-          item.name,
-          item.variantName ?? "",
-          item.sku ?? "",
-        ]
-          .join(" ")
-          .toLowerCase();
+    const found: CatalogItem[] = [];
+    for (const item of availableItems) {
+      if ((searchText.get(`${item.kind}-${item.id}`) ?? "").includes(query)) {
+        found.push(item);
+        if (found.length >= 30) break;
+      }
+    }
+    return found;
+  }, [availableItems, deferredSearch, searchText]);
 
-        return searchable.includes(query);
+  function selectCustomerPrices(id: string) {
+    const token = ++priceRequest.current;
+    setCustomerPrices([]);
+
+    if (!id) {
+      setPricesStatus("idle");
+      return;
+    }
+
+    setPricesStatus("loading");
+    loadCustomerPrices(id)
+      .then((result) => {
+        if (token !== priceRequest.current) return;
+        setCustomerPrices(result.prices);
+        setPricesStatus(result.ok ? "ready" : "error");
       })
-      .slice(0, 30);
-  }, [availableItems, search]);
+      .catch(() => {
+        if (token === priceRequest.current) setPricesStatus("error");
+      });
+  }
 
   function changeSaleType(
     type: "retail" | "wholesale"
@@ -209,11 +207,13 @@ export default function SaleTerminal({
 
     if (type === "retail") {
       setCustomerId("");
+      selectCustomerPrices("");
     }
   }
 
   function changeCustomer(id: string) {
     setCustomerId(id);
+    selectCustomerPrices(id);
     setCart([]);
     setSearch("");
     resetPayments();
@@ -551,6 +551,19 @@ export default function SaleTerminal({
                 <strong>
                   {selectedCustomer.name}
                 </strong>
+              </p>
+            )}
+
+            {pricesStatus === "loading" && (
+              <p className="muted" role="status">კლიენტის ფასები იტვირთება…</p>
+            )}
+
+            {pricesStatus === "error" && (
+              <p className="notice error" role="alert">
+                კლიენტის ფასები ვერ ჩაიტვირთა.{" "}
+                <button type="button" className="button secondary" onClick={() => selectCustomerPrices(customerId)}>
+                  ხელახლა ცდა
+                </button>
               </p>
             )}
           </>

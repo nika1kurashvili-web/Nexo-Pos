@@ -64,7 +64,10 @@ export default async function ReturnsPage({
     const { data, error } = await client.rpc("pos_return_sale_details", {
       p_number: number,
     });
-    if (error) lookupFailed = true;
+    if (error) {
+      lookupFailed = true;
+      console.error("[returns] rpc error:", error);
+    }
     else details = data;
   }
 
@@ -81,6 +84,9 @@ export default async function ReturnsPage({
 
   const requestId = crypto.randomUUID();
   const loadError = Boolean(sessionError || methodError || lookupFailed);
+  if (sessionError) console.error("[returns] sessions query failed:", sessionError);
+  if (methodError) console.error("[returns] payment methods query failed:", methodError);
+  if (lookupFailed) console.error("[returns] pos_return_sale_details failed for number", number);
   const allReturned =
     details?.items.every(
       (item) => Number(item.returned_quantity) >= Number(item.quantity),
