@@ -204,6 +204,7 @@ export default async function NewSalePage({
   );
 
   const requestId = crypto.randomUUID();
+  const notice = await searchParams;
 
   return (
     <>
@@ -217,9 +218,11 @@ export default async function NewSalePage({
         </p>
       </div>
 
-      <Notice {...(await searchParams)} />
+      <Notice error={notice.error} />
+      {!notice.error && notice.saved && <p className="notice success" role="status">გაყიდვა წარმატებით დაფიქსირდა</p>}
 
       <SaleTerminal
+        key={requestId}
         items={catalog}
         paymentMethods={paymentMethods}
         sessionId={session.id}

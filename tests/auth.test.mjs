@@ -30,6 +30,7 @@ let origin;
 let appOutput = "";
 const registerId = "10000000-0000-4000-8000-000000000001";
 const registerSessions = [];
+let registerStateOverride = null;
 
 for (const [index, name, role, active] of [
   [1, "admin", "admin", true],
@@ -107,7 +108,7 @@ const supabase = createServer(async (req, res) => {
   }
   if (url.pathname === "/rest/v1/pos_register_sessions") return send(200, registerSessions.filter((s) => s.cashier_id === record?.user.id));
   if (url.pathname === "/rest/v1/pos_registers") return send(200, [{ id: registerId, name: "მთავარი სალარო", active: true }]);
-  if (url.pathname === "/rest/v1/rpc/pos_register_state") return send(200, [{
+  if (url.pathname === "/rest/v1/rpc/pos_register_state") return send(200, registerStateOverride ?? [{
     register_id: registerId, register_name: "Test register", register_active: true,
     session_id: null, cashier_id: null, cashier_name: null, opened_at: null,
     opening_cash: null, cash_payments: null, expected_cash: null, is_own: false, can_close: false,
@@ -215,6 +216,36 @@ function browser() {
 function redirectTo(response, path) {
   assert.ok([303, 307].includes(response.status), `Expected redirect, got ${response.status}`);
   assert.equal(new URL(response.headers.get("location"), origin).pathname + new URL(response.headers.get("location"), origin).search, path);
+}
+
+for (const name of ["admin", "cashier"]) {
+  test(`${name} sees cash withdrawal only in their own open register card`, async () => {
+    const client = browser();
+    redirectTo(await client.login(name), "/");
+    const id = users.get(`${name}@example.test`).user.id;
+    const row = {
+      register_id: registerId, register_name: "Local UI fixture", register_active: true,
+      session_id: "20000000-0000-4000-8000-000000000001", cashier_id: id,
+      cashier_name: `Test ${name}`, opened_at: "2026-10-01T08:00:00Z",
+      opening_cash: 100, cash_payments: 20, cash_withdrawals: 10, expected_cash: 110,
+      is_own: true, can_close: true,
+      last_actual_closing_cash: null, last_expected_closing_cash: null, last_closed_at: null,
+    };
+    const button = /<button\b[^>]*>თანხის გაცემა<\/button>/;
+    try {
+      registerStateOverride = [row];
+      const ownHtml = await (await client.request("/")).text();
+      assert.match(ownHtml, button, "Own open session must server-render the withdrawal button");
+      assert.ok(ownHtml.includes("გაცემული თანხა"));
+      assert.ok(ownHtml.includes('href="/sales/new"'));
+      registerStateOverride = [{ ...row, cashier_id: "00000000-0000-4000-8000-999999999999", is_own: false, can_close: name === "admin" }];
+      const foreignHtml = await (await client.request("/")).text();
+      assert.doesNotMatch(foreignHtml, button, "Admin close permission must not grant withdrawal on a foreign session");
+      assert.ok(foreignHtml.includes("გაცემული თანხა"), "Summary remains visible for foreign sessions");
+      registerStateOverride = [{ ...row, session_id: null, is_own: false, can_close: false }];
+      assert.doesNotMatch(await (await client.request("/")).text(), button);
+    } finally { registerStateOverride = null; }
+  });
 }
 
 async function protectedRedirect(response, path) {

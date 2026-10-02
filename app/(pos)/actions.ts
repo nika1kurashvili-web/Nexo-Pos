@@ -236,7 +236,7 @@ export async function completeSale(form: FormData) {
     redirect("/sales/new?error=invalid");
   }
 
-  const { data: saleId, error } = await client.rpc(
+  const { error } = await client.rpc(
     "pos_complete_sale",
     {
       p_request: requestId,
@@ -266,7 +266,7 @@ export async function completeSale(form: FormData) {
     revalidatePath(`/customers/${customer}`);
   }
 
-  redirect(`/sales?saved=1&sale=${saleId}`);
+  redirect("/sales/new?saved=1");
 }
 export async function recordCustomerRepayment(
   form: FormData

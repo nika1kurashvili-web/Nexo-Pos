@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useFormStatus } from "react-dom";
 import { completeSale } from "@/app/(pos)/actions";
 
 type CatalogItem = {
@@ -33,14 +34,15 @@ type CustomerPrice = {
 
 type CartItem = CatalogItem & {
   quantity: number;
-  unitPrice: number;
-  discountPercent: number;
+  unitPrice: string;
+  discountPercent: string;
 };
 
 type PaymentRow = {
   id: number;
   method: string;
-  amount: number;
+  // null means automatic; any string (including empty or zero) is a manual edit.
+  amount: string | null;
 };
 
 type Props = {
@@ -52,8 +54,17 @@ type Props = {
   customerPrices: CustomerPrice[];
 };
 
+const moneyInput = (value: string) => value.replace(/^0+(?=\d)/, "");
+
 const round2 = (value: number) =>
   Math.round((value + Number.EPSILON) * 100) / 100;
+
+function SaleSubmit({ disabled, children }: { disabled: boolean; children: React.ReactNode }) {
+  const { pending } = useFormStatus();
+  return <button type="submit" className="button" disabled={disabled || pending}>
+    {pending ? "ინახება…" : children}
+  </button>;
+}
 
 export default function SaleTerminal({
   items,
@@ -75,7 +86,7 @@ export default function SaleTerminal({
     {
       id: 1,
       method: paymentMethods[0]?.code ?? "",
-      amount: 0,
+      amount: null,
     },
   ]);
 
@@ -94,7 +105,7 @@ export default function SaleTerminal({
       {
         id: 1,
         method: paymentMethods[0]?.code ?? "",
-        amount: 0,
+        amount: null,
       },
     ]);
     setNextPaymentId(2);
@@ -242,8 +253,8 @@ export default function SaleTerminal({
         {
           ...item,
           quantity: 1,
-          unitPrice: price,
-          discountPercent: 0,
+          unitPrice: price === 0 ? "" : String(price),
+          discountPercent: "",
         },
       ];
     });
@@ -255,7 +266,7 @@ export default function SaleTerminal({
       | "quantity"
       | "unitPrice"
       | "discountPercent",
-    value: number
+    value: number | string
   ) {
     setCart((current) =>
       current.map((row, rowIndex) => {
@@ -268,7 +279,7 @@ export default function SaleTerminal({
             ...row,
             quantity: Math.max(
               0.001,
-              value || 0.001
+              Number(value) || 0.001
             ),
           };
         }
@@ -276,16 +287,13 @@ export default function SaleTerminal({
         if (field === "unitPrice") {
           return {
             ...row,
-            unitPrice: Math.max(0, value || 0),
+            unitPrice: moneyInput(String(value)),
           };
         }
 
         return {
           ...row,
-          discountPercent: Math.min(
-            100,
-            Math.max(0, value || 0)
-          ),
+          discountPercent: moneyInput(String(value)),
         };
       })
     );
@@ -323,8 +331,8 @@ export default function SaleTerminal({
   const total = useMemo(() => {
     const value = cart.reduce((sum, row) => {
       const finalUnitPrice = round2(
-        row.unitPrice *
-          (1 - row.discountPercent / 100)
+        Number(row.unitPrice) *
+          (1 - Number(row.discountPercent) / 100)
       );
 
       const lineTotal = round2(
@@ -337,10 +345,21 @@ export default function SaleTerminal({
     return round2(value);
   }, [cart]);
 
+  // Allocate only the remaining cents to automatic rows; manual values stay untouched.
+  let automaticRemaining = Math.max(0, Math.round(total * 100) - payments.reduce(
+    (sum, payment) => sum + (payment.amount === null ? 0 : Math.round(Number(payment.amount || 0) * 100)), 0
+  ));
+  const displayedPayments = payments.map((payment) => {
+    if (payment.amount !== null) return { ...payment, amount: payment.amount };
+    const amount = automaticRemaining > 0 ? (automaticRemaining / 100).toFixed(2) : "";
+    automaticRemaining = 0;
+    return { ...payment, amount };
+  });
+
   const paidTotal = round2(
-    payments.reduce(
+    displayedPayments.reduce(
       (sum, payment) =>
-        sum + Math.max(0, payment.amount || 0),
+        sum + Math.max(0, Number(payment.amount) || 0),
       0
     )
   );
@@ -373,10 +392,7 @@ export default function SaleTerminal({
 
         return {
           ...payment,
-          amount: Math.max(
-            0,
-            Number(value) || 0
-          ),
+          amount: moneyInput(value),
         };
       })
     );
@@ -401,7 +417,7 @@ export default function SaleTerminal({
       {
         id: nextPaymentId,
         method: nextMethod,
-        amount: remaining,
+        amount: null,
       },
     ]);
 
@@ -424,10 +440,10 @@ export default function SaleTerminal({
       ) !== index
   );
 
-  const validPayments = payments.filter(
+  const validPayments = displayedPayments.filter(
     (payment) =>
       payment.method &&
-      payment.amount > 0
+      Number(payment.amount) > 0
   );
 
   const payload = JSON.stringify(
@@ -435,16 +451,16 @@ export default function SaleTerminal({
       kind: row.kind,
       target: row.id,
       quantity: row.quantity.toFixed(3),
-      unit_price: row.unitPrice.toFixed(2),
+      unit_price: Number(row.unitPrice).toFixed(2),
       discount_percent:
-        row.discountPercent.toFixed(2),
+        Number(row.discountPercent).toFixed(2),
     }))
   );
 
   const paymentPayload = JSON.stringify(
     validPayments.map((payment) => ({
       method: payment.method,
-      amount: round2(payment.amount).toFixed(2),
+      amount: round2(Number(payment.amount)).toFixed(2),
     }))
   );
 
@@ -455,6 +471,8 @@ export default function SaleTerminal({
   const canSubmit =
     cart.length > 0 &&
     total > 0 &&
+    cart.every((row) => Number(row.unitPrice) >= 0 && Number(row.discountPercent) >= 0 && Number(row.discountPercent) <= 100) &&
+    displayedPayments.every((row) => Number(row.amount) >= 0 && Number.isFinite(Number(row.amount))) &&
     !duplicatePaymentMethod &&
     overpayment === 0 &&
     (saleType === "retail"
@@ -657,9 +675,9 @@ export default function SaleTerminal({
               <tbody>
                 {cart.map((row, index) => {
                   const finalUnitPrice = round2(
-                    row.unitPrice *
+                    Number(row.unitPrice) *
                       (1 -
-                        row.discountPercent /
+                        Number(row.discountPercent) /
                           100)
                   );
 
@@ -736,14 +754,14 @@ export default function SaleTerminal({
                           type="number"
                           min="0"
                           step="0.01"
+                  placeholder="0.00"
+                  onFocus={(event) => { if (Number(event.currentTarget.value) === 0) event.currentTarget.select(); }}
                           value={row.unitPrice}
                           onChange={(event) =>
                             updateItem(
                               index,
                               "unitPrice",
-                              Number(
-                                event.target.value
-                              )
+                              event.target.value
                             )
                           }
                         />
@@ -755,6 +773,8 @@ export default function SaleTerminal({
                           min="0"
                           max="100"
                           step="0.01"
+                          placeholder="0.00"
+                          onFocus={(event) => { if (Number(event.currentTarget.value) === 0) event.currentTarget.select(); }}
                           value={
                             row.discountPercent
                           }
@@ -762,9 +782,7 @@ export default function SaleTerminal({
                             updateItem(
                               index,
                               "discountPercent",
-                              Number(
-                                event.target.value
-                              )
+                              event.target.value
                             )
                           }
                         />
@@ -804,7 +822,7 @@ export default function SaleTerminal({
         <h2>გადახდა</h2>
 
         <div className="split-payments">
-          {payments.map((payment) => (
+          {displayedPayments.map((payment) => (
             <div
               key={payment.id}
               className="split-payment-row"
@@ -844,6 +862,8 @@ export default function SaleTerminal({
                   type="number"
                   min="0"
                   step="0.01"
+                          placeholder="0.00"
+                          onFocus={(event) => { if (Number(event.currentTarget.value) === 0) event.currentTarget.select(); }}
                   value={payment.amount}
                   onChange={(event) =>
                     updatePayment(
@@ -986,9 +1006,7 @@ export default function SaleTerminal({
             value={trackingCode}
           />
 
-          <button
-            type="submit"
-            className="button"
+          <SaleSubmit
             disabled={!canSubmit}
           >
             {saleType === "retail"
@@ -998,7 +1016,7 @@ export default function SaleTerminal({
               : `საბითუმო გაყიდვის დასრულება — ${total.toFixed(
                   2
                 )} ₾`}
-          </button>
+          </SaleSubmit>
         </form>
       </section>
     </div>
