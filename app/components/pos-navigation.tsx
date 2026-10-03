@@ -59,6 +59,14 @@ export default function PosNavigation({
       label: "თანამშრომლები",
     },
     {
+      href: "/purchases",
+      label: "შესყიდვები",
+    },
+    {
+      href: "/inventories",
+      label: "ინვენტარიზაცია",
+    },
+    {
       href: "/analytics",
       label: "ანალიტიკა",
     },

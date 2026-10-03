@@ -46,9 +46,20 @@ export type ReturnSaleDetails = {
   current_debt: Decimal;
   items: { id: string; line_number: number; sku: string | null; product_name: string; variant_name: string | null; quantity: Decimal; final_unit_price: Decimal; line_total: Decimal; returned_quantity: Decimal; returned_amount: Decimal }[];
 } | null;
+export type PosPurchase = { id: string; purchase_number: number; request_id: string; request_fingerprint: string; actor_id: string; actor_name: string; note: string | null; items_count: number; total: Decimal; created_at: string };
+export type PosPurchaseItem = { id: string; purchase_id: string; line_number: number; target_kind: "product" | "variant"; product_id: string | null; variant_id: string | null; sku: string | null; product_name: string; variant_name: string | null; quantity: Decimal; unit_price: Decimal; previous_price: Decimal | null; line_total: Decimal };
+export type PosInventory = { id: string; inventory_number: number; request_id: string; request_fingerprint: string; actor_id: string; actor_name: string; note: string | null; items_count: number; created_at: string };
+export type PosInventoryItem = { id: string; inventory_id: string; line_number: number; target_kind: "product" | "variant"; product_id: string | null; variant_id: string | null; sku: string | null; product_name: string; variant_name: string | null; system_quantity: Decimal; counted_quantity: Decimal; difference: Decimal; reason: string };
+export type PosStockMovement = { id: string; kind: "sale" | "return" | "purchase" | "inventory"; target_kind: "product" | "variant"; product_id: string | null; variant_id: string | null; sku: string | null; product_name: string; variant_name: string | null; quantity_change: Decimal; document_id: string; created_at: string };
+export type InventoryCatalogItem = { kind: "product" | "variant"; id: string; name: string; sku: string | null; price: Decimal | null; stock: Decimal; cost: Decimal | null };
 type Table<Row> = { Row: Row; Insert: Partial<Row>; Update: Partial<Row>; Relationships: [] };
 export type PosTables = {
   pos_cash_withdrawals: Table<CashWithdrawal>;
+  pos_purchases: Table<PosPurchase>;
+  pos_purchase_items: Table<PosPurchaseItem>;
+  pos_inventories: Table<PosInventory>;
+  pos_inventory_items: Table<PosInventoryItem>;
+  pos_stock_movements: Table<PosStockMovement>;
   pos_returns: Table<PosReturn>;
   pos_return_items: Table<PosReturnItem>;
   pos_return_refunds: Table<PosReturnRefund>;
@@ -93,6 +104,9 @@ export type AnalyticsProductRow = {
   profit: number | string | null;
 };
 export type PosFunctions = {
+  pos_inventory_catalog: { Args: Record<string, never>; Returns: InventoryCatalogItem[] };
+  pos_create_purchase: { Args: { p_request: string; p_note: string | null; p_items: Json }; Returns: string };
+  pos_create_inventory: { Args: { p_request: string; p_note: string | null; p_items: Json }; Returns: string };
   pos_complete_return: { Args: { p_request: string; p_session: string; p_sale: string; p_items: Json; p_refunds: Json; p_reason: string }; Returns: string };
   pos_sales_analytics: { Args: { p_from?: string | null; p_to?: string | null; p_type?: string | null; p_customer?: string | null; p_product?: string | null; p_sku?: string | null; p_min?: number | null; p_max?: number | null }; Returns: SalesAnalytics };
   pos_sales_analytics_products: { Args: { p_from?: string | null; p_to?: string | null; p_type?: string | null; p_customer?: string | null; p_product?: string | null; p_sku?: string | null; p_min?: number | null; p_max?: number | null }; Returns: AnalyticsProductRow[] };

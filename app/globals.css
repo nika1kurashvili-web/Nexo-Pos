@@ -1131,3 +1131,8 @@ td.wrap { min-width: 14rem; max-width: 28rem; overflow-wrap: anywhere; }
 .analytics-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 0.75rem; }
 .icon-button { display: inline-flex; align-items: center; justify-content: center; width: 2.6rem; height: 2.6rem; border: 1px solid var(--border-strong); border-radius: 0.6rem; background: var(--surface); color: #1d6f42; }
 .icon-button:hover { background: var(--success-bg); border-color: #9fd0b2; }
+
+/* inventory / purchases */
+.row-pinned td { background: rgba(255, 214, 102, 0.25); }
+.data-form td input { min-width: 6rem; width: 100%; }
+.data-form td input[aria-invalid="true"] { border-color: #d64545; }
