@@ -40,6 +40,8 @@ export default async function CustomerPage({
   const [
     { data: customer, error },
     { data: prices, error: priceError },
+    { data: catalogProducts, error: catalogProductError },
+    { data: catalogVariants, error: catalogVariantError },
     { data: balance, error: balanceError },
     { data: transactions, error: ledgerError },
     { data: paymentMethods, error: paymentError },
@@ -51,12 +53,36 @@ export default async function CustomerPage({
       .eq("id", id)
       .maybeSingle(),
 
-    client
-      .from("pos_customer_prices")
-      .select("*")
-      .eq("customer_id", id)
-      .order("created_at")
-      .limit(200),
+    fetchAll<{
+      id: string;
+      product_id: string | null;
+      variant_id: string | null;
+      price: string | number;
+    }>((from, to) =>
+      client
+        .from("pos_customer_prices")
+        .select("id,product_id,variant_id,price")
+        .eq("customer_id", id)
+        .order("created_at")
+        .order("id")
+        .range(from, to)
+    ),
+
+    fetchAll<{ id: string; name: string; sku: string | null }>((from, to) =>
+      client
+        .from("products" as never)
+        .select("id,name,sku")
+        .order("id")
+        .range(from, to)
+    ),
+
+    fetchAll<{ id: string; product_id: string; name: string; sku: string | null }>((from, to) =>
+      client
+        .from("product_variants" as never)
+        .select("id,product_id,name,sku")
+        .order("id")
+        .range(from, to)
+    ),
 
     client.rpc("pos_customer_balance", {
       p_customer: id,
@@ -97,6 +123,30 @@ export default async function CustomerPage({
   }
 
   const session = sessionData?.[0] ?? null;
+
+  const productById = new Map(catalogProducts.map((product) => [product.id, product]));
+  const variantById = new Map(catalogVariants.map((variant) => [variant.id, variant]));
+  const priceRows = prices
+    .map((price) => {
+      if (price.variant_id !== null) {
+        const variant = variantById.get(price.variant_id);
+        const product = variant ? productById.get(variant.product_id) : undefined;
+        return {
+          id: price.id,
+          sku: variant?.sku ?? "",
+          name: product && variant ? `${product.name} / ${variant.name}` : "—",
+          price: price.price,
+        };
+      }
+      const product = price.product_id !== null ? productById.get(price.product_id) : undefined;
+      return {
+        id: price.id,
+        sku: product?.sku ?? "",
+        name: product?.name ?? "—",
+        price: price.price,
+      };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name, "ka"));
 
   /*
    * დარჩენილი ვალი ითვლება თითო გაყიდვის სრული ledger-იდან (არა ბოლო 500 ჩანაწერიდან),
@@ -201,40 +251,38 @@ export default async function CustomerPage({
         <p>
           ფასის არქონისას საცალო ფასი
           ავტომატურად არ გამოიყენება.
-          ნაჩვენებია მაქსიმუმ 200 ფასი.
         </p>
+
+        {Boolean(priceError || catalogProductError || catalogVariantError) && (
+          <p className="notice error" role="alert">
+            ფასების სია ვერ ჩაიტვირთა.
+          </p>
+        )}
 
         <div className="table-scroll">
           <table>
             <thead>
               <tr>
-                <th>ტიპი</th>
-                <th>კატალოგის ID</th>
+                <th>ბარკოდი</th>
+                <th>პროდუქტი</th>
                 <th>ფასი</th>
               </tr>
             </thead>
 
             <tbody>
-              {prices?.map((price) => (
-                <tr key={price.id}>
-                  <td>
-                    {price.variant_id !== null
-                      ? "ვარიანტი"
-                      : "პროდუქტი"}
-                  </td>
-
-                  <td>
-                    {String(
-                      price.variant_id ??
-                        price.product_id
-                    )}
-                  </td>
-
-                  <td>
-                    {money(price.price)}
-                  </td>
+              {priceRows.map((row) => (
+                <tr key={row.id}>
+                  <td>{row.sku || "—"}</td>
+                  <td>{row.name}</td>
+                  <td>{money(row.price)}</td>
                 </tr>
               ))}
+
+              {!priceRows.length && (
+                <tr>
+                  <td colSpan={3}>ინდივიდუალური ფასები ჯერ არ არის დამატებული.</td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -300,13 +348,24 @@ export default async function CustomerPage({
     </label>
 
     <p>
-      Excel-ის პირველ ფურცელში უნდა იყოს
-      სვეტები: <strong>SKU</strong> და{" "}
-      <strong>ფასი</strong>.
+      <a
+        href={`/customers/${id}/prices-template`}
+        className="button secondary"
+        download
+      >
+        შაბლონის გადმოწერა (მთელი პროდუქცია)
+      </a>
     </p>
 
     <p>
-      მაგალითად: SKU = ABC-001, ფასი = 25.50
+      გადმოწერილ ფაილში ყველა პროდუქტია. ამ კლიენტის ახლანდელი ფასები
+      უკვე ჩაწერილია სვეტში <strong>ფასი</strong>. შეცვალეთ ან
+      შეავსეთ ის ფასები, რაც გსურთ, და ატვირთეთ ფაილი ისევ აქ.
+    </p>
+
+    <p>
+      ცარიელი ფასის მქონე სტრიქონები გამოიტოვება და არსებულ ფასებს არ
+      შეცვლის. ფასის წაშლა ამ გზით შეუძლებელია.
     </p>
 
     <SaveButton>
