@@ -51,3 +51,36 @@ export function searchCatalog(items: InventoryCatalogItem[], query: string, limi
 export function quantityDifference(counted: string, system: string | number) {
   return Math.round((Number(normalizeDecimal(counted)) - Number(system)) * 1000) / 1000;
 }
+
+// ---------------------------------------------------------------- Excel import
+export type CountRow = { sku: string; counted: string };
+
+export const COUNT_SHEET_HEADER = ["SKU", "პროდუქტი", "საცალო ფასი", "შესყიდვის ფასი", "სისტემაში", "რეალური რაოდენობა"];
+
+const cellText = (value: unknown) =>
+  typeof value === "number" ? String(value) : String(value ?? "").trim();
+
+// ფაილის პირველი სტრიქონი სათაურია: ვეძებთ SKU/ბარკოდის და „რეალური რაოდენობის“ სვეტს.
+export function parseCountRows(
+  table: unknown[][],
+): { rows: CountRow[]; blank: number } | { error: string } {
+  const header = (table[0] ?? []).map((cell) => cellText(cell).toLowerCase());
+  const skuCol = header.findIndex((h) => h === "sku" || h === "ბარკოდი");
+  const countCol = header.findIndex((h) => h.includes("რეალურ") || h === "counted");
+  if (skuCol < 0 || countCol < 0) {
+    return { error: "ფაილში ვერ მოიძებნა „SKU“ და „რეალური რაოდენობა“ სვეტები. გამოიყენეთ ჩამოტვირთული შაბლონი." };
+  }
+  const rows: CountRow[] = [];
+  let blank = 0;
+  for (const line of table.slice(1)) {
+    const sku = cellText(line?.[skuCol]);
+    if (!sku) continue;
+    const counted = cellText(line?.[countCol]);
+    if (!counted) {
+      blank += 1;
+      continue;
+    }
+    rows.push({ sku, counted });
+  }
+  return { rows, blank };
+}

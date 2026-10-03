@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { createInventory } from "@/app/(pos)/inventories/actions";
 import {
   findBySku,
@@ -8,6 +8,7 @@ import {
   itemKey,
   normalizeDecimal,
   quantityDifference,
+  type CountRow,
 } from "@/lib/pos/inventory";
 import type { InventoryCatalogItem } from "@/lib/pos/types";
 
@@ -39,6 +40,9 @@ export default function InventoryForm({
   const [note, setNote] = useState("");
   const [missing, setMissing] = useState(false);
   const countRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  const [uploading, startUpload] = useTransition();
+  const [importMessage, setImportMessage] = useState<{ tone: "error" | "info"; text: string } | null>(null);
 
   const countOf = (item: InventoryCatalogItem) => counts[itemKey(item)] ?? String(Number(item.stock));
 
@@ -130,6 +134,64 @@ export default function InventoryForm({
     });
   }
 
+  function onFile(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setImportMessage(null);
+    startUpload(async () => {
+      try {
+        const body = new FormData();
+        body.set("file", file);
+        const response = await fetch("/inventories/parse", { method: "POST", body });
+        const result = (await response.json()) as { rows?: CountRow[]; blank?: number; error?: string };
+        if (!response.ok || !result.rows) {
+          setImportMessage({ tone: "error", text: result.error ?? "ფაილის წაკითხვა ვერ მოხერხდა." });
+          return;
+        }
+        const bySku = new Map<string, InventoryCatalogItem[]>();
+        for (const item of catalog) {
+          const sku = item.sku?.trim().toLowerCase();
+          if (sku) bySku.set(sku, [...(bySku.get(sku) ?? []), item]);
+        }
+        const next: Record<string, string> = {};
+        const notFound: string[] = [];
+        let invalid = 0;
+        let same = 0;
+        let changedNow = 0;
+        for (const row of result.rows) {
+          const matches = bySku.get(row.sku.trim().toLowerCase());
+          if (!matches || matches.length !== 1) {
+            notFound.push(row.sku);
+            continue;
+          }
+          const item = matches[0];
+          if (!isCount(row.counted)) {
+            invalid += 1;
+            continue;
+          }
+          if (quantityDifference(row.counted, item.stock) === 0) {
+            same += 1;
+            continue;
+          }
+          next[itemKey(item)] = normalizeDecimal(row.counted);
+          changedNow += 1;
+        }
+        setCounts((current) => ({ ...current, ...next }));
+        const parts = [
+          `ფაილიდან წაკითხულია ${result.rows.length} სტრიქონი: ${changedNow} შეცვლილია, ${same} უცვლელია.`,
+        ];
+        if (notFound.length) parts.push(`ვერ მოიძებნა SKU (${notFound.length}): ${notFound.slice(0, 8).join(", ")}${notFound.length > 8 ? "…" : ""}.`);
+        if (invalid) parts.push(`არასწორი რაოდენობა: ${invalid} სტრიქონი გამოტოვებულია.`);
+        if (result.blank) parts.push(`ცარიელი რაოდენობა: ${result.blank} სტრიქონი გამოტოვებულია.`);
+        parts.push("გადაამოწმეთ ცვლილებები ქვემოთ და შეინახეთ.");
+        setImportMessage({ tone: notFound.length || invalid ? "error" : "info", text: parts.join(" ") });
+      } catch {
+        setImportMessage({ tone: "error", text: "ფაილის ატვირთვა ვერ მოხერხდა." });
+      }
+    });
+  }
+
   const payload = JSON.stringify(
     changed.map((item) => ({
       kind: item.kind,
@@ -167,6 +229,41 @@ export default function InventoryForm({
           დასკანერებული პროდუქტი ამოვა სიის თავში და რაოდენობის ველი მზად იქნება შესაცვლელად.
           შეცვლილი პროდუქტები სიის თავში რჩება; მიზეზის მითითება სურვილისამებრ შეგიძლიათ.
         </p>
+        <div className="analytics-tools">
+          <a
+            href="/inventories/export"
+            className="icon-button"
+            aria-label="Excel შაბლონის ჩამოტვირთვა"
+            title="Excel შაბლონის ჩამოტვირთვა (ყველა პროდუქტი რაოდენობით)"
+            download
+          >
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 3v12" />
+              <path d="m7 11 5 5 5-5" />
+              <path d="M5 20h14" />
+            </svg>
+          </a>
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".xlsx,.xls"
+            onChange={onFile}
+            hidden
+          />
+          <button
+            type="button"
+            className="button secondary"
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+          >
+            {uploading ? "იტვირთება…" : "Excel-ის ატვირთვა"}
+          </button>
+        </div>
+        {importMessage && (
+          <p className={`notice ${importMessage.tone}`} role={importMessage.tone === "error" ? "alert" : "status"}>
+            {importMessage.text}
+          </p>
+        )}
       </section>
 
       <section className="panel">

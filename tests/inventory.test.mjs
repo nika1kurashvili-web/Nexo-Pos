@@ -49,3 +49,19 @@ test('inventory migration and pages are admin-only and wired', async () => {
   const nav = await load('app/components/pos-navigation.tsx');
   assert.match(nav, /\/purchases/); assert.match(nav, /\/inventories/);
 });
+
+import { parseCountRows, COUNT_SHEET_HEADER } from '../lib/pos/inventory.ts';
+
+test('count sheet parser: header detection, blanks, numbers and text counts', () => {
+  const ok = parseCountRows([
+    COUNT_SHEET_HEADER,
+    ['00123', 'რძე', 2, 1, 5, 7],
+    ['TEA-L', 'ჩაი', 3, '', 0, '2,5'],
+    ['X1', 'ცარიელი', 1, 1, 1, ''],
+    ['', 'უსკუ', 1, 1, 1, 9],
+  ]);
+  assert.deepEqual(ok, { rows: [{ sku: '00123', counted: '7' }, { sku: 'TEA-L', counted: '2,5' }], blank: 1 });
+  assert.ok('error' in parseCountRows([['a', 'b'], [1, 2]]));
+  assert.ok('error' in parseCountRows([]));
+  assert.deepEqual(parseCountRows([['ბარკოდი', 'რეალური რაოდენობა'], [4860001, 3]]), { rows: [{ sku: '4860001', counted: '3' }], blank: 0 });
+});
