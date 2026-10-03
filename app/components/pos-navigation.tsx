@@ -59,6 +59,10 @@ export default function PosNavigation({
       label: "თანამშრომლები",
     },
     {
+      href: "/analytics",
+      label: "ანალიტიკა",
+    },
+    {
       href: "/reports",
       label: "რეპორტები",
     },

@@ -64,8 +64,38 @@ export type PosTables = {
   pos_customer_transactions: Table<CustomerTransaction>;
 };
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
+export type SalesAnalytics = {
+  item_mode: boolean;
+  totals: {
+    sales_count: number;
+    quantity: number | string;
+    gross: number | string;
+    returns: number | string;
+    net: number | string;
+    cost: number | string;
+    profit: number | string;
+    unknown_cost_revenue: number | string;
+  };
+  weekdays: { day: number; sales_count: number; net: number | string }[];
+  types: Partial<Record<"retail" | "wholesale", { sales_count: number; net: number | string }>>;
+  top_products: { name: string; sku: string | null; quantity: number | string; net: number | string }[];
+  received: number | string | null;
+  debt: number | string | null;
+};
+export type AnalyticsProductRow = {
+  name: string;
+  sku: string | null;
+  quantity: number | string;
+  revenue: number | string;
+  avg_price: number | string | null;
+  unit_cost: number | string | null;
+  cost: number | string | null;
+  profit: number | string | null;
+};
 export type PosFunctions = {
   pos_complete_return: { Args: { p_request: string; p_session: string; p_sale: string; p_items: Json; p_refunds: Json; p_reason: string }; Returns: string };
+  pos_sales_analytics: { Args: { p_from?: string | null; p_to?: string | null; p_type?: string | null; p_customer?: string | null; p_product?: string | null; p_sku?: string | null; p_min?: number | null; p_max?: number | null }; Returns: SalesAnalytics };
+  pos_sales_analytics_products: { Args: { p_from?: string | null; p_to?: string | null; p_type?: string | null; p_customer?: string | null; p_product?: string | null; p_sku?: string | null; p_min?: number | null; p_max?: number | null }; Returns: AnalyticsProductRow[] };
   pos_return_sale_details: { Args: { p_number: number }; Returns: ReturnSaleDetails };
   pos_record_cash_withdrawal: { Args: { p_request: string; p_session: string; p_amount: string; p_reason: string }; Returns: string };
   pos_employee_list: { Args: Record<string, never>; Returns: PosEmployee[] };
