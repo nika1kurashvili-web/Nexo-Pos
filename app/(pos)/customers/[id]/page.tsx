@@ -16,6 +16,9 @@ import {
 
 export const dynamic = "force-dynamic";
 
+const tbilisiDate = (value: string | Date) =>
+  new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Tbilisi" }).format(new Date(value));
+
 export default async function CustomerPage({
   params,
   searchParams,
@@ -205,6 +208,8 @@ export default async function CustomerPage({
       );
     }
   }
+
+  const todayTbilisi = tbilisiDate(new Date());
 
   const debtSales = debtCandidates
     .map((sale) => ({
@@ -482,6 +487,18 @@ export default async function CustomerPage({
                               defaultValue={
                                 sale.remainingDebt
                               }
+                              required
+                            />
+                          </label>
+
+                          <label>
+                            თარიღი
+                            <input
+                              type="date"
+                              name="paid_on"
+                              defaultValue={todayTbilisi}
+                              min={tbilisiDate(sale.created_at)}
+                              max={todayTbilisi}
                               required
                             />
                           </label>

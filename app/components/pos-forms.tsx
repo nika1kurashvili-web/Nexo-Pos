@@ -3,7 +3,7 @@ import { SubmitButton } from "./submit-button";
 
 export function Notice({ error, saved, loadError, imported, skipped }: { error?: string; saved?: string; loadError?: boolean; imported?: string; skipped?: string }) {
   if (loadError) return <p className="notice error" role="alert">მონაცემები ვერ ჩაიტვირთა. გადაამოწმეთ Phase 1 მიგრაცია და წვდომა.</p>;
-  if (error) return <p className="notice error" role="alert">{error === "conflict" ? "ჩანაწერი უკვე არსებობს ან სალარო უკვე გახსნილია." : error === "invalid" ? "შეამოწმეთ შეყვანილი მონაცემები." : error === "too_many" ? "ფაილში ძალიან ბევრი სტრიქონია. ერთ ჯერზე მაქსიმუმ 2000 ფასი შეიძლება." : error === "too_large" ? "ფაილი ძალიან დიდია (მაქსიმუმ 4 MB)." : "ოპერაცია ვერ შესრულდა. შეამოწმეთ მონაცემები, სესია და წვდომა."}</p>;
+  if (error) return <p className="notice error" role="alert">{error === "conflict" ? "ჩანაწერი უკვე არსებობს ან სალარო უკვე გახსნილია." : error === "invalid" ? "შეამოწმეთ შეყვანილი მონაცემები." : error === "date" ? "თარიღი არასწორია: ის არ შეიძლება იყოს მომავალში ან გაყიდვის თარიღზე ადრე." : error === "too_many" ? "ფაილში ძალიან ბევრი სტრიქონია. ერთ ჯერზე მაქსიმუმ 2000 ფასი შეიძლება." : error === "too_large" ? "ფაილი ძალიან დიდია (მაქსიმუმ 4 MB)." : "ოპერაცია ვერ შესრულდა. შეამოწმეთ მონაცემები, სესია და წვდომა."}</p>;
   const importedCount = imported && /^\d{1,6}$/.test(imported) ? imported : null;
   const skippedCount = skipped && /^\d{1,6}$/.test(skipped) ? Number(skipped) : 0;
   return saved ? <p className="notice success" role="status">ცვლილება შენახულია.{importedCount !== null && ` დაიმპორტდა ${importedCount} ფასი.`}{skippedCount > 0 && ` გამოტოვებულია ${skippedCount} არასწორი სტრიქონი.`}</p> : null;

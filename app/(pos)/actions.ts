@@ -280,6 +280,8 @@ export async function recordCustomerRepayment(
   const session = text(form, "session_id");
   const method = text(form, "method");
   const amount = parsePrice(text(form, "amount"));
+  // თარიღი არასავალდებულოა: ცარიელი = დღეს. ფორმატი YYYY-MM-DD, სხვა ვალიდაცია ბაზაშია.
+  const paidOn = text(form, "paid_on");
 
   const path = uuid(customer)
     ? `/customers/${customer}`
@@ -292,7 +294,8 @@ export async function recordCustomerRepayment(
     !uuid(session) ||
     !method ||
     amount === null ||
-    Number(amount) <= 0
+    Number(amount) <= 0 ||
+    (paidOn !== "" && !/^\d{4}-\d{2}-\d{2}$/.test(paidOn))
   ) {
     redirect(`${path}?error=invalid`);
   }
@@ -305,6 +308,7 @@ export async function recordCustomerRepayment(
       p_session: session,
       p_method: method,
       p_amount: amount,
+      p_date: paidOn || null,
     }
   );
 
@@ -314,7 +318,9 @@ export async function recordCustomerRepayment(
       safeAuthError(error)
     );
 
-    redirect(`${path}?error=failed`);
+    redirect(
+      `${path}?error=${error.message?.trim() === "INVALID_PAYMENT_DATE" ? "date" : "failed"}`
+    );
   }
 
   revalidatePath("/", "layout");

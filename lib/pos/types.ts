@@ -127,5 +127,5 @@ export type PosFunctions = {
   pos_quote: { Args: { p_kind: string; p_target: string; p_type: string; p_customer?: string }; Returns: Json };
   pos_set_customer_prices: { Args: { p_customer: string; p_rows: Json }; Returns: number };
   pos_complete_sale: { Args: { p_request: string; p_session: string; p_type: string; p_customer: string | null; p_tracking: string | null; p_items: Json; p_payments: Json }; Returns: string };
-  pos_record_repayment: { Args: { p_request: string; p_sale: string; p_session: string; p_method: string; p_amount: string }; Returns: string };
+  pos_record_repayment: { Args: { p_request: string; p_sale: string; p_session: string; p_method: string; p_amount: string; p_date?: string | null }; Returns: string };
 };
