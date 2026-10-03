@@ -3,6 +3,7 @@ import { measureSaleQuery } from "@/lib/performance";
 import { fetchAll } from "@/lib/pos/paginate";
 import { requirePosProfile } from "@/lib/auth/server";
 import { posClient } from "@/lib/pos/server";
+import { tbilisiToday } from "@/lib/pos/analytics";
 import { Notice } from "@/app/components/pos-forms";
 import SaleTerminal from "@/app/components/sale-terminal";
 
@@ -245,6 +246,8 @@ export default async function NewSalePage({
         sessionId={session.id}
         requestId={requestId}
         customers={customers}
+        canBackdate={profile.role === "admin"}
+        today={tbilisiToday()}
       />
     </>
   );

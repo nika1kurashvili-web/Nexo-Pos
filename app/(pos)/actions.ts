@@ -184,11 +184,14 @@ export async function completeSale(form: FormData) {
   const saleType = text(form, "sale_type");
   const customer = optional(form, "customer_id");
   const tracking = optional(form, "tracking_code");
+  // თარიღი არასავალდებულოა (მხოლოდ ადმინისთვის): ცარიელი = ახლა.
+  const saleDate = text(form, "sale_date");
 
   if (
     !uuid(requestId) ||
     !uuid(session) ||
-    !["retail", "wholesale"].includes(saleType)
+    !["retail", "wholesale"].includes(saleType) ||
+    (saleDate !== "" && !/^\d{4}-\d{2}-\d{2}$/.test(saleDate))
   ) {
     redirect("/sales/new?error=invalid");
   }
@@ -248,6 +251,7 @@ export async function completeSale(form: FormData) {
       p_tracking: tracking,
       p_items: items,
       p_payments: payments,
+      p_date: saleDate || null,
     }
   );
 
@@ -256,6 +260,11 @@ export async function completeSale(form: FormData) {
       "[nexo-pos-sale]",
       safeAuthError(error)
     );
+
+    const code = error.message?.trim();
+    if (code === "BACKDATE_NOT_ALLOWED" || code === "INVALID_SALE_DATE") {
+      redirect("/sales/new?error=date");
+    }
 
     redirect(`/sales/new?error=failed&request=${requestId}`);
   }

@@ -251,6 +251,11 @@ export default async function SaleDetailsPage({
                 {new Date(sale.created_at).toLocaleString("ka-GE", { timeZone: "Asia/Tbilisi" })}
               </dd>
 
+              <dt>დაფიქსირდა სისტემაში</dt>
+              <dd>
+                {new Date(sale.recorded_at).toLocaleString("ka-GE", { timeZone: "Asia/Tbilisi" })}
+              </dd>
+
               <dt>მოლარე</dt>
               <dd>{sale.cashier_name}</dd>
 
@@ -350,6 +355,11 @@ export default async function SaleDetailsPage({
                         {new Date(
                           payment.created_at
                         ).toLocaleString("ka-GE", { timeZone: "Asia/Tbilisi" })}
+                        {Math.abs(new Date(payment.recorded_at).getTime() - new Date(payment.created_at).getTime()) > 60_000 && (
+                          <span className="muted">
+                            {" "}(დაფიქსირდა: {new Date(payment.recorded_at).toLocaleString("ka-GE", { timeZone: "Asia/Tbilisi" })})
+                          </span>
+                        )}
                       </td>
                     </tr>
                   ))}

@@ -52,6 +52,9 @@ type Props = {
   sessionId: string;
   requestId: string;
   customers: Customer[];
+  // ადმინს შეუძლია გაყიდვის თარიღის შეცვლა (წარსულით); today = თბილისის დღევანდელი თარიღი.
+  canBackdate?: boolean;
+  today?: string;
 };
 
 const moneyInput = (value: string) => value.replace(/^0+(?=\d)/, "");
@@ -72,7 +75,10 @@ export default function SaleTerminal({
   sessionId,
   requestId,
   customers,
+  canBackdate = false,
+  today = "",
 }: Props) {
+  const [saleDate, setSaleDate] = useState(today);
   const [saleType, setSaleType] =
     useState<"retail" | "wholesale">("retail");
 
@@ -986,6 +992,24 @@ export default function SaleTerminal({
             </p>
           )}
 
+        {canBackdate && today && (
+          <label>
+            გაყიდვის თარიღი
+            <input
+              type="date"
+              value={saleDate}
+              max={today}
+              onChange={(event) => setSaleDate(event.target.value)}
+              required
+            />
+            {saleDate !== today && (
+              <span className="muted">
+                გაყიდვა ჩაიწერება არჩეული თარიღით (12:00 საათზე), ხოლო რეალური დაფიქსირების დრო ქვითარზე შეინახება.
+              </span>
+            )}
+          </label>
+        )}
+
         <label>
           Tracking კოდი
           <input
@@ -1041,6 +1065,12 @@ export default function SaleTerminal({
             type="hidden"
             name="tracking_code"
             value={trackingCode}
+          />
+
+          <input
+            type="hidden"
+            name="sale_date"
+            value={canBackdate && saleDate !== today ? saleDate : ""}
           />
 
           <SaleSubmit
