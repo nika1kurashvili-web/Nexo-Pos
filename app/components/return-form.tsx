@@ -22,7 +22,7 @@ type Props = {
   currentDebt: number;
   items: Item[];
   paymentMethods: { code: string; name: string }[];
-  sessionId: string;
+  sessionId: string | null;
   requestId: string;
 };
 
@@ -87,6 +87,7 @@ export default function ReturnForm({
   const refundCents = totalCents - debtReduction;
 
   const canSubmit =
+    sessionId !== null &&
     selected.length > 0 &&
     !hasInvalid &&
     reason.trim().length > 0 &&
@@ -105,7 +106,7 @@ export default function ReturnForm({
   return (
     <form action={completeReturn} className="panel return-form">
       <input type="hidden" name="request_id" value={requestId} />
-      <input type="hidden" name="session_id" value={sessionId} />
+      <input type="hidden" name="session_id" value={sessionId ?? ""} />
       <input type="hidden" name="sale_id" value={saleId} />
       <input type="hidden" name="sale_number" value={saleNumber} />
       <input type="hidden" name="items" value={JSON.stringify(itemsPayload)} />

@@ -65,7 +65,7 @@ export default async function NewSalePage({
 
     measureSaleQuery("payment_methods", client
       .from("pos_payment_methods")
-      .select("code,name")
+      .select("code,name,is_debt")
       .eq("active", true)
       .order("name")),
 
@@ -178,6 +178,7 @@ export default async function NewSalePage({
     (method) => ({
       code: method.code,
       name: method.name,
+      isDebt: method.is_debt === true,
     })
   );
 

@@ -52,6 +52,7 @@ export default async function ReturnsPage({
         .from("pos_payment_methods")
         .select("code,name")
         .eq("active", true)
+        .eq("is_debt", false)
         .order("name"),
     ]);
 
@@ -180,13 +181,14 @@ export default async function ReturnsPage({
             </div>
           </section>
 
-          {!session ? (
+          {!session && (
             <section className="panel">
               <h2>სალარო დახურულია</h2>
-              <p>დაბრუნების გასაფორმებლად ჯერ უნდა გახსნა სალარო.</p>
+              <p>დაბრუნების გასაფორმებლად ჯერ უნდა გახსნა სალარო. ნივთების სია ქვემოთ ჩანს, მაგრამ დადასტურება სალაროს გახსნამდე მიუწვდომელია.</p>
               <Link href="/" className="button primary">სალაროს გახსნა</Link>
             </section>
-          ) : allReturned ? (
+          )}
+          {allReturned ? (
             <p className="notice info">ამ ქვითრის ყველა ნივთი უკვე დაბრუნებულია.</p>
           ) : (
             <ReturnForm
@@ -206,7 +208,7 @@ export default async function ReturnsPage({
                 returnedAmount: String(item.returned_amount),
               }))}
               paymentMethods={(methodData ?? []).map((m) => ({ code: m.code, name: m.name }))}
-              sessionId={session.id}
+              sessionId={session?.id ?? null}
               requestId={requestId}
             />
           )}

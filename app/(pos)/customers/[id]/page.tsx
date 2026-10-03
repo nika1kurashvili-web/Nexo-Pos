@@ -101,6 +101,7 @@ export default async function CustomerPage({
       .from("pos_payment_methods")
       .select("code,name")
       .eq("active", true)
+      .eq("is_debt", false)
       .order("name"),
 
     client

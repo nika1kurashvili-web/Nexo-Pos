@@ -142,8 +142,9 @@ $$;
 
 -- Any active POS user may look a sale up by its number for a return; the RPC
 -- returns only what the return screen needs (no payments, no cashier data).
+-- Not STABLE: pos_require_actor() takes a FOR SHARE lock, which PostgREST rejects in its read-only transaction.
 create function public.pos_return_sale_details(p_number bigint) returns jsonb
-language plpgsql stable security definer set search_path = '' as $$
+language plpgsql volatile security definer set search_path = '' as $$
 declare actor uuid := public.pos_require_actor(); sale public.pos_sales; debt numeric := 0;
 begin
   select * into sale from public.pos_sales where sale_number = p_number;

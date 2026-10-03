@@ -17,6 +17,8 @@ type CatalogItem = {
 type PaymentMethod = {
   code: string;
   name: string;
+  // true = „გადახდა მოგვიანებით“ (მაგ. ნიკასთან რიცხავს): თანხა არ ითვლება მიღებულად, რჩება ვალად.
+  isDebt?: boolean;
 };
 
 type Customer = {
@@ -84,10 +86,13 @@ export default function SaleTerminal({
   const priceRequest = useRef(0);
   const deferredSearch = useDeferredValue(search);
 
+  const defaultMethod =
+    paymentMethods.find((method) => !method.isDebt)?.code ?? "";
+
   const [payments, setPayments] = useState<PaymentRow[]>([
     {
       id: 1,
-      method: paymentMethods[0]?.code ?? "",
+      method: defaultMethod,
       amount: null,
     },
   ]);
@@ -106,7 +111,7 @@ export default function SaleTerminal({
     setPayments([
       {
         id: 1,
-        method: paymentMethods[0]?.code ?? "",
+        method: defaultMethod,
         amount: null,
       },
     ]);
@@ -356,10 +361,30 @@ export default function SaleTerminal({
     return { ...payment, amount };
   });
 
+  // საცალოზე „მოგვიანებით“ მეთოდები არ არის ხელმისაწვდომი (ვალი მხოლოდ საბითუმოს აქვს).
+  const usableMethods = paymentMethods.filter(
+    (method) => saleType === "wholesale" || !method.isDebt
+  );
+  const debtCodes = new Set(
+    paymentMethods.filter((method) => method.isDebt).map((method) => method.code)
+  );
+
   const paidTotal = round2(
     displayedPayments.reduce(
       (sum, payment) =>
-        sum + Math.max(0, Number(payment.amount) || 0),
+        debtCodes.has(payment.method)
+          ? sum
+          : sum + Math.max(0, Number(payment.amount) || 0),
+      0
+    )
+  );
+
+  const deferredTotal = round2(
+    displayedPayments.reduce(
+      (sum, payment) =>
+        debtCodes.has(payment.method)
+          ? sum + Math.max(0, Number(payment.amount) || 0)
+          : sum,
       0
     )
   );
@@ -369,7 +394,7 @@ export default function SaleTerminal({
   );
 
   const overpayment = round2(
-    Math.max(0, paidTotal - total)
+    Math.max(0, paidTotal + deferredTotal - total)
   );
 
   function updatePayment(
@@ -404,7 +429,7 @@ export default function SaleTerminal({
     );
 
     const nextMethod =
-      paymentMethods.find(
+      usableMethods.find(
         (method) => !usedMethods.has(method.code)
       )?.code ?? "";
 
@@ -465,8 +490,7 @@ export default function SaleTerminal({
   );
 
   const canAddPayment =
-    payments.length < paymentMethods.length &&
-    remaining > 0;
+    payments.length < usableMethods.length;
 
   const canSubmit =
     cart.length > 0 &&
@@ -856,7 +880,7 @@ export default function SaleTerminal({
                     აირჩიე
                   </option>
 
-                  {paymentMethods.map(
+                  {usableMethods.map(
                     (method) => (
                       <option
                         key={method.code}
