@@ -65,3 +65,24 @@ test('count sheet parser: header detection, blanks, numbers and text counts', ()
   assert.ok('error' in parseCountRows([]));
   assert.deepEqual(parseCountRows([['ბარკოდი', 'რეალური რაოდენობა'], [4860001, 3]]), { rows: [{ sku: '4860001', counted: '3' }], blank: 0 });
 });
+
+import { checkSession } from '../lib/pos/register-check.ts';
+
+test('register session check: opening vs previous close, closing vs expected', () => {
+  const hist = [
+    { id: 'a', register_id: 'R', opened_at: '2026-10-01T08:00:00Z', status: 'closed', actual_closing_cash: '500.00' },
+    { id: 'b', register_id: 'R', opened_at: '2026-10-02T08:00:00Z', status: 'closed', actual_closing_cash: '120.00' },
+    { id: 'x', register_id: 'OTHER', opened_at: '2026-10-02T07:00:00Z', status: 'closed', actual_closing_cash: '1.00' },
+  ];
+  const base = { register_id: 'R', status: 'closed', expected_cash: '120.00', actual_closing_cash: '120.00' };
+  const first = checkSession({ ...base, id: 'a', opened_at: '2026-10-01T08:00:00Z', opening_cash: '50' }, hist);
+  assert.equal(first.opening.state, 'na');
+  const okRow = checkSession({ ...base, id: 'b', opened_at: '2026-10-02T08:00:00Z', opening_cash: '500.00' }, hist);
+  assert.deepEqual([okRow.opening.state, okRow.closing.state, okRow.verdict], ['ok', 'ok', 'ok']);
+  const badOpen = checkSession({ ...base, id: 'b', opened_at: '2026-10-02T08:00:00Z', opening_cash: '450.00' }, hist);
+  assert.equal(badOpen.opening.state, 'bad'); assert.equal(badOpen.verdict, 'bad');
+  const badClose = checkSession({ ...base, id: 'c', opened_at: '2026-10-03T08:00:00Z', opening_cash: '120.00', actual_closing_cash: '110.00' }, hist);
+  assert.equal(badClose.opening.state, 'ok'); assert.equal(badClose.closing.state, 'bad'); assert.equal(badClose.verdict, 'bad');
+  const open = checkSession({ ...base, id: 'd', opened_at: '2026-10-04T08:00:00Z', status: 'open', opening_cash: '999', actual_closing_cash: null, expected_cash: null }, hist.concat([{ id: 'c', register_id: 'R', opened_at: '2026-10-03T08:00:00Z', status: 'closed', actual_closing_cash: '110.00' }]));
+  assert.equal(open.opening.state, 'bad'); assert.equal(open.closing.state, 'na');
+});

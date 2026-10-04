@@ -2,11 +2,13 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/auth/server";
 import { money, posClient } from "@/lib/pos/server";
 import { registerSessionReport } from "@/lib/pos/register-cash";
+import { fetchAll } from "@/lib/pos/paginate";
+import { checkSession, type HistorySession } from "@/lib/pos/register-check";
 
 import { Notice } from "@/app/components/pos-forms";
 
 export const dynamic = "force-dynamic";
-type Filters = { from?: string; to?: string; register?: string; cashier?: string; status?: string };
+type Filters = { from?: string; to?: string; register?: string; cashier?: string; status?: string; issues?: string };
 const uuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 const date = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value) &&
   Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value;
@@ -21,6 +23,7 @@ export default async function RegisterSessionsReport({ searchParams }: { searchP
   const register = typeof params.register === "string" ? params.register.trim() : "";
   const cashier = typeof params.cashier === "string" ? params.cashier.trim() : "";
   const status = params.status === "open" || params.status === "closed" ? params.status : "";
+  const issuesOnly = params.issues === "1";
   const invalid = Boolean((from && !date(from)) || (to && !date(to)) || (from && to && from > to) ||
     (register && !uuid(register)) || (cashier && !uuid(cashier)));
   let until: string | null = null;
@@ -36,10 +39,25 @@ export default async function RegisterSessionsReport({ searchParams }: { searchP
     p_cashier: !invalid && cashier ? cashier : null,
     p_status: status || null,
   });
+  // წინა დახურვასთან შესადარებლად გვჭირდება ყველა სესია (არა მხოლოდ გაფილტრულები).
+  const { data: history, error: historyError } = await fetchAll<HistorySession>((from, to) =>
+    client
+      .from("pos_register_sessions")
+      .select("id,register_id,opened_at,status,actual_closing_cash")
+      .order("opened_at")
+      .order("id")
+      .range(from, to),
+  );
   const registers = report?.registers;
   const names = new Map(report?.cashiers.map(p => [p.id, p.full_name]) ?? []);
-  const sessions = invalid ? [] : report?.sessions;
-  const failed = Boolean(reportError || !report);
+  const failed = Boolean(reportError || !report || historyError);
+  const checked = (invalid ? [] : report?.sessions ?? []).map((s) => ({
+    s,
+    check: checkSession(s, history),
+  }));
+  const badCount = checked.filter((row) => row.check.verdict === "bad").length;
+  const okCount = checked.filter((row) => row.check.verdict === "ok").length;
+  const shown = issuesOnly ? checked.filter((row) => row.check.verdict === "bad") : checked;
   return <>
     <p><Link href="/reports">← რეპორტებზე დაბრუნება</Link></p>
     <h1>სალაროს სესიები</h1>
@@ -47,23 +65,32 @@ export default async function RegisterSessionsReport({ searchParams }: { searchP
     {invalid && <p className="notice error" role="alert">ფილტრის მნიშვნელობა არასწორია. გადაამოწმეთ თარიღები და არჩეული ჩანაწერები.</p>}
     <section className="panel">
       <h2>ფილტრები</h2>
-      <form method="get" className="data-form" key={JSON.stringify([from, to, register, cashier, status])}>
+      <form method="get" className="data-form" key={JSON.stringify([from, to, register, cashier, status, issuesOnly])}>
         <label>თარიღიდან<input type="date" name="from" defaultValue={from} /></label>
         <label>თარიღამდე<input type="date" name="to" defaultValue={to} /></label>
         <label>სალარო<select name="register" defaultValue={register}><option value="">ყველა</option>{registers?.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}</select></label>
         <label>მოლარე<select name="cashier" defaultValue={cashier}><option value="">ყველა</option>{[...names].map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label>
         <label>სტატუსი<select name="status" defaultValue={status}><option value="">ყველა</option><option value="open">ღია</option><option value="closed">დახურული</option></select></label>
+        <label className="check"><input type="checkbox" name="issues" value="1" defaultChecked={issuesOnly} />მხოლოდ შეცდომები</label>
         <div><button type="submit" className="button primary">ძებნა</button>{" "}<Link href="/reports/register-sessions" className="button secondary">გასუფთავება</Link></div>
       </form>
       <p>თარიღები იფილტრება გახსნის დროით, თბილისის დროის სარტყელში. ნაჩვენებია უახლესი 100 სესია.</p>
     </section>
+    {!failed && !invalid && checked.length > 0 && (
+      <p className={badCount > 0 ? "notice error" : "notice success"} role="status">
+        {badCount > 0
+          ? `შეცდომიანი სესია: ${badCount}. წითლად მონიშნულ სტრიქონებში ჩანს სად გაიხსნა ან დაიხურა არასწორი თანხით.`
+          : "ყველა გახსნა და დახურვა სწორია."}
+        {" "}სწორია: {okCount}.
+      </p>
+    )}
     <section className="panel">
       <h2>სესიების ისტორია</h2>
       <div className="table-scroll"><table>
-        <thead><tr>{["სალარო", "მოლარე / ვინ გახსნა", "გახსნა", "საწყისი თანხა", "ნაღდი შემოსავალი", "გაცემული თანხა", "ნაღდით დაბრუნებული", "სტატუსი", "დახურვა", "მოსალოდნელი თანხა", "ფაქტობრივი თანხა", "სხვაობა", "დახურვის შენიშვნა"].map(label => <th key={label} scope="col">{label}</th>)}</tr></thead>
-        <tbody>{sessions?.map(s => {
+        <thead><tr>{["სალარო", "მოლარე / ვინ გახსნა", "გახსნა", "საწყისი თანხა", "ნაღდი შემოსავალი", "გაცემული თანხა", "ნაღდით დაბრუნებული", "სტატუსი", "დახურვა", "მოსალოდნელი თანხა", "ფაქტობრივი თანხა", "სხვაობა", "შემოწმება", "დახურვის შენიშვნა"].map(label => <th key={label} scope="col">{label}</th>)}</tr></thead>
+        <tbody>{shown.map(({ s, check }) => {
           const expected = s.expected_cash;
-          return <tr key={s.id}>
+          return <tr key={s.id} className={check.verdict === "bad" ? "session-bad" : check.verdict === "ok" ? "session-ok" : undefined}>
             <td>{s.register_name}</td>
             <td>{s.cashier_name}</td>
             <td>{time(s.opened_at)}</td><td>{money(s.opening_cash)}</td>
@@ -72,11 +99,19 @@ export default async function RegisterSessionsReport({ searchParams }: { searchP
             <td>{money(s.cash_refunds ?? 0)}</td>
             <td>{s.status === "open" ? "ღია" : "დახურული"}</td><td>{time(s.closed_at)}</td>
             <td>{money(expected)}{s.status === "open" && " (მიმდინარე)"}</td>
-            <td>{money(s.actual_closing_cash)}</td><td>{money(s.cash_difference)}</td><td>{s.closing_note || "—"}</td>
+            <td>{money(s.actual_closing_cash)}</td><td>{money(s.cash_difference)}</td>
+            <td>
+              {[check.opening, check.closing].map((item, index) => (
+                <div key={index} className={`check-line check-${item.state}`}>
+                  <span aria-hidden="true">{item.state === "ok" ? "✓" : item.state === "bad" ? "✗" : "•"}</span> {item.text}
+                </div>
+              ))}
+            </td>
+            <td>{s.closing_note || "—"}</td>
           </tr>;
         })}</tbody>
       </table></div>
-      {!failed && !invalid && !sessions?.length && <p>მითითებული პირობებით სესიები ვერ მოიძებნა.</p>}
+      {!failed && !invalid && !shown.length && <p>მითითებული პირობებით სესიები ვერ მოიძებნა.</p>}
 
     </section>
   </>;
