@@ -1138,9 +1138,10 @@ td.wrap { min-width: 14rem; max-width: 28rem; overflow-wrap: anywhere; }
 .data-form td input[aria-invalid="true"] { border-color: #d64545; }
 
 /* register session checks */
-.session-ok td { background: rgba(46, 160, 90, 0.12); }
-.session-bad td { background: rgba(220, 60, 60, 0.14); }
-.check-line { font-size: 0.85rem; line-height: 1.35; margin: 0.15rem 0; }
-.check-ok { color: #1d7a45; }
-.check-bad { color: #b42323; font-weight: 600; }
-.check-na { color: #6b7280; }
+.sessions-table th { text-transform: none; letter-spacing: 0; font-size: 0.85rem; white-space: normal; vertical-align: bottom; }
+.sessions-table td { white-space: nowrap; vertical-align: middle; }
+.sessions-table td:last-child { white-space: normal; min-width: 10rem; }
+.sessions-table tbody tr:nth-child(even) { background: #fafbfd; }
+.amount-pill { display: inline-block; padding: 0.2rem 0.65rem; border-radius: 999px; font-weight: 700; border: 1px solid transparent; cursor: help; }
+.amount-ok { background: #e3f6ea; color: #17703f; border-color: #a9dfbf; }
+.amount-bad { background: #fde6e6; color: #b42323; border-color: #f2b1b1; }

@@ -3,7 +3,7 @@ import { requireAdmin } from "@/lib/auth/server";
 import { money, posClient } from "@/lib/pos/server";
 import { registerSessionReport } from "@/lib/pos/register-cash";
 import { fetchAll } from "@/lib/pos/paginate";
-import { checkSession, type HistorySession } from "@/lib/pos/register-check";
+import { checkSession, type Check, type HistorySession } from "@/lib/pos/register-check";
 
 import { Notice } from "@/app/components/pos-forms";
 
@@ -13,6 +13,11 @@ const uuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4
 const date = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value) &&
   Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value;
 const time = (value: string | null) => value ? new Date(value).toLocaleString("ka-GE", { timeZone: "Asia/Tbilisi" }) : "—";
+
+function Amount({ value, check }: { value: string; check: Check }) {
+  if (check.state === "na") return <>{value}</>;
+  return <span className={`amount-pill amount-${check.state}`} title={check.text}>{value}</span>;
+}
 
 export default async function RegisterSessionsReport({ searchParams }: { searchParams: Promise<Filters> }) {
   await requireAdmin();
@@ -55,8 +60,6 @@ export default async function RegisterSessionsReport({ searchParams }: { searchP
     s,
     check: checkSession(s, history),
   }));
-  const badCount = checked.filter((row) => row.check.verdict === "bad").length;
-  const okCount = checked.filter((row) => row.check.verdict === "ok").length;
   const shown = issuesOnly ? checked.filter((row) => row.check.verdict === "bad") : checked;
   return <>
     <p><Link href="/reports">← რეპორტებზე დაბრუნება</Link></p>
@@ -76,37 +79,23 @@ export default async function RegisterSessionsReport({ searchParams }: { searchP
       </form>
       <p>თარიღები იფილტრება გახსნის დროით, თბილისის დროის სარტყელში. ნაჩვენებია უახლესი 100 სესია.</p>
     </section>
-    {!failed && !invalid && checked.length > 0 && (
-      <p className={badCount > 0 ? "notice error" : "notice success"} role="status">
-        {badCount > 0
-          ? `შეცდომიანი სესია: ${badCount}. წითლად მონიშნულ სტრიქონებში ჩანს სად გაიხსნა ან დაიხურა არასწორი თანხით.`
-          : "ყველა გახსნა და დახურვა სწორია."}
-        {" "}სწორია: {okCount}.
-      </p>
-    )}
     <section className="panel">
       <h2>სესიების ისტორია</h2>
-      <div className="table-scroll"><table>
-        <thead><tr>{["სალარო", "მოლარე / ვინ გახსნა", "გახსნა", "საწყისი თანხა", "ნაღდი შემოსავალი", "გაცემული თანხა", "ნაღდით დაბრუნებული", "სტატუსი", "დახურვა", "მოსალოდნელი თანხა", "ფაქტობრივი თანხა", "სხვაობა", "შემოწმება", "დახურვის შენიშვნა"].map(label => <th key={label} scope="col">{label}</th>)}</tr></thead>
+      <div className="table-scroll"><table className="sessions-table">
+        <thead><tr>{["სალარო", "მოლარე / ვინ გახსნა", "გახსნა", "საწყისი თანხა", "ნაღდი შემოსავალი", "გაცემული თანხა", "ნაღდით დაბრუნებული", "სტატუსი", "დახურვა", "მოსალოდნელი თანხა", "ფაქტობრივი თანხა", "სხვაობა", "დახურვის შენიშვნა"].map(label => <th key={label} scope="col">{label}</th>)}</tr></thead>
         <tbody>{shown.map(({ s, check }) => {
           const expected = s.expected_cash;
-          return <tr key={s.id} className={check.verdict === "bad" ? "session-bad" : check.verdict === "ok" ? "session-ok" : undefined}>
+          return <tr key={s.id}>
             <td>{s.register_name}</td>
             <td>{s.cashier_name}</td>
-            <td>{time(s.opened_at)}</td><td>{money(s.opening_cash)}</td>
+            <td>{time(s.opened_at)}</td>
+            <td><Amount value={money(s.opening_cash)} check={check.opening} /></td>
             <td>{money(s.cash_payments)}</td>
             <td>{money(s.cash_withdrawals)} <Link href={`/reports/cash-withdrawals?session=${s.id}`}>გაცემების ისტორია</Link></td>
             <td>{money(s.cash_refunds ?? 0)}</td>
             <td>{s.status === "open" ? "ღია" : "დახურული"}</td><td>{time(s.closed_at)}</td>
             <td>{money(expected)}{s.status === "open" && " (მიმდინარე)"}</td>
-            <td>{money(s.actual_closing_cash)}</td><td>{money(s.cash_difference)}</td>
-            <td>
-              {[check.opening, check.closing].map((item, index) => (
-                <div key={index} className={`check-line check-${item.state}`}>
-                  <span aria-hidden="true">{item.state === "ok" ? "✓" : item.state === "bad" ? "✗" : "•"}</span> {item.text}
-                </div>
-              ))}
-            </td>
+            <td><Amount value={money(s.actual_closing_cash)} check={check.closing} /></td><td>{money(s.cash_difference)}</td>
             <td>{s.closing_note || "—"}</td>
           </tr>;
         })}</tbody>
