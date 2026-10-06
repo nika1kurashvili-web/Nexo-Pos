@@ -59,6 +59,10 @@ export default function PosNavigation({
       label: "თანამშრომლები",
     },
     {
+      href: "/products",
+      label: "პროდუქტები",
+    },
+    {
       href: "/purchases",
       label: "შესყიდვები",
     },

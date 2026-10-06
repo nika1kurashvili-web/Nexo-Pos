@@ -1145,3 +1145,23 @@ td.wrap { min-width: 14rem; max-width: 28rem; overflow-wrap: anywhere; }
 .amount-pill { display: inline-block; padding: 0.2rem 0.65rem; border-radius: 999px; font-weight: 700; border: 1px solid transparent; cursor: help; }
 .amount-ok { background: #e3f6ea; color: #17703f; border-color: #a9dfbf; }
 .amount-bad { background: #fde6e6; color: #b42323; border-color: #f2b1b1; }
+
+/* products page */
+.products-table th { text-transform: none; letter-spacing: 0; font-size: 0.85rem; }
+.products-table td { vertical-align: middle; }
+.products-table tbody tr:nth-child(even) { background: #fafbfd; }
+.products-table .cell-field { position: relative; display: inline-block; }
+.products-table .cell-input {
+  width: 6.5rem; padding: 0.45rem 0.7rem; text-align: right; font: inherit; font-weight: 600;
+  color: #1f2a3d; background: #f4f6fb; border: 1px solid transparent; border-radius: 0.55rem;
+  transition: background 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+}
+.products-table .cell-input:hover { background: #fff; border-color: #cfd6e4; }
+.products-table .cell-input:focus { outline: none; background: #fff; border-color: #274bc4; box-shadow: 0 0 0 3px rgba(39, 75, 196, 0.15); }
+.products-table .cell-money .cell-input { padding-right: 1.7rem; }
+.products-table .cell-money::after { content: "₾"; position: absolute; right: 0.65rem; top: 50%; transform: translateY(-50%); color: #7a8498; font-weight: 600; pointer-events: none; }
+.products-table .cell-low { background: #fdeaea; color: #b42323; }
+.products-table .cell-low:hover { border-color: #e29a9a; }
+.products-table .row-inactive td { opacity: 0.55; }
+.products-table .row-actions { white-space: nowrap; }
+.products-table .row-actions form { display: inline; }

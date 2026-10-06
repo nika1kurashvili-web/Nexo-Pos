@@ -52,6 +52,7 @@ export type PosInventory = { id: string; inventory_number: number; request_id: s
 export type PosInventoryItem = { id: string; inventory_id: string; line_number: number; target_kind: "product" | "variant"; product_id: string | null; variant_id: string | null; sku: string | null; product_name: string; variant_name: string | null; system_quantity: Decimal; counted_quantity: Decimal; difference: Decimal; reason: string };
 export type PosStockMovement = { id: string; kind: "sale" | "return" | "purchase" | "inventory"; target_kind: "product" | "variant"; product_id: string | null; variant_id: string | null; sku: string | null; product_name: string; variant_name: string | null; quantity_change: Decimal; document_id: string; created_at: string };
 export type InventoryCatalogItem = { kind: "product" | "variant"; id: string; name: string; sku: string | null; price: Decimal | null; stock: Decimal; cost: Decimal | null };
+export type ProductOverviewItem = { kind: "product" | "variant"; id: string; name: string; variant_name: string | null; sku: string | null; price: Decimal | null; stock: Decimal; cost: Decimal | null; active: boolean };
 type Table<Row> = { Row: Row; Insert: Partial<Row>; Update: Partial<Row>; Relationships: [] };
 export type PosTables = {
   pos_cash_withdrawals: Table<CashWithdrawal>;
@@ -104,6 +105,9 @@ export type AnalyticsProductRow = {
   profit: number | string | null;
 };
 export type PosFunctions = {
+  pos_products_overview: { Args: Record<string, never>; Returns: ProductOverviewItem[] };
+  pos_create_product: { Args: { p_name: string; p_sku: string | null; p_price: string; p_cost: string | null; p_weight: string }; Returns: string };
+  pos_update_product: { Args: { p_kind: string; p_id: string; p_price: string | null; p_active: boolean | null }; Returns: undefined };
   pos_inventory_catalog: { Args: Record<string, never>; Returns: InventoryCatalogItem[] };
   pos_create_purchase: { Args: { p_request: string; p_note: string | null; p_items: Json }; Returns: string };
   pos_create_inventory: { Args: { p_request: string; p_note: string | null; p_items: Json }; Returns: string };
