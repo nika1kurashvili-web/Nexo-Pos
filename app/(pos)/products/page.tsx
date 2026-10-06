@@ -96,7 +96,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                 <td><strong>{item.name}</strong>{item.variant_name && <div className="muted">{item.variant_name}</div>}</td>
                 <td>{item.sku ?? "—"}</td>
                 <td><span className="cell-field"><input form={formId} name="stock" inputMode="decimal" defaultValue={qty(item.stock)} aria-label="მარაგი" className={`cell-input${stock <= 0 ? " cell-low" : ""}`} /></span></td>
-                <td>{item.cost === null ? "—" : money(item.cost)}</td>
+                <td><span className="cell-field cell-money"><input form={formId} name="cost" inputMode="decimal" defaultValue={plain(item.cost)} placeholder="—" aria-label="შესყიდვის ფასი" className="cell-input" /></span></td>
                 <td><span className="cell-field cell-money"><input form={formId} name="price" inputMode="decimal" defaultValue={plain(item.price ?? 0)} aria-label="გასაყიდი ფასი" className="cell-input" /></span></td>
                 <td>{margin === null ? "—" : money(margin)}</td>
                 <td>{item.active ? "აქტიური" : "გაუქმებული"}</td>
@@ -106,6 +106,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                     <input type="hidden" name="id" value={item.id} />
                     <input type="hidden" name="request_id" value={crypto.randomUUID()} />
                     <input type="hidden" name="orig_stock" value={qty(item.stock)} />
+                    <input type="hidden" name="orig_cost" value={plain(item.cost)} />
                     <input type="hidden" name="orig_price" value={plain(item.price ?? 0)} />
                     <input type="hidden" name="active" value={item.active ? "1" : "0"} />
                     <input type="hidden" name="q" value={q} />

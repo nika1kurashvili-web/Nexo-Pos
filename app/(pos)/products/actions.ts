@@ -54,6 +54,8 @@ export async function saveProduct(form: FormData) {
   const requestId = text(form, "request_id");
   const price = normalizeDecimal(text(form, "price"));
   const origPrice = normalizeDecimal(text(form, "orig_price"));
+  const cost = normalizeDecimal(text(form, "cost"));
+  const origCost = normalizeDecimal(text(form, "orig_cost"));
   const stock = normalizeDecimal(text(form, "stock"));
   const origStock = normalizeDecimal(text(form, "orig_stock"));
   if ((kind !== "product" && kind !== "variant") || !uuidRe.test(id) || !uuidRe.test(requestId)) {
@@ -61,8 +63,16 @@ export async function saveProduct(form: FormData) {
   }
   if (!isPrice(price)) redirect(back(form, "error=price"));
   if (!isCount(stock)) redirect(back(form, "error=stock"));
+  if (cost !== origCost && !isPrice(cost)) redirect(back(form, "error=cost"));
 
   const client = await rpcClient();
+  if (cost !== origCost && Number(cost) !== Number(origCost || "0")) {
+    const { error } = await client.rpc("pos_set_cost", { p_kind: kind, p_id: id, p_cost: cost });
+    if (error) {
+      console.error("[nexo-pos-products] cost", safeAuthError(error));
+      redirect(back(form, `error=${errorCodes[error.message?.trim() ?? ""] ?? "failed"}`));
+    }
+  }
   if (Number(price) !== Number(origPrice)) {
     const { error } = await client.rpc("pos_update_product", { p_kind: kind, p_id: id, p_price: price, p_active: null });
     if (error) {

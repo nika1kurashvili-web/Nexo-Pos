@@ -107,6 +107,7 @@ export type AnalyticsProductRow = {
 export type PosFunctions = {
   pos_products_overview: { Args: Record<string, never>; Returns: ProductOverviewItem[] };
   pos_create_product: { Args: { p_name: string; p_sku: string | null; p_price: string; p_cost: string | null; p_weight: string }; Returns: string };
+  pos_set_cost: { Args: { p_kind: string; p_id: string; p_cost: string }; Returns: undefined };
   pos_update_product: { Args: { p_kind: string; p_id: string; p_price: string | null; p_active: boolean | null }; Returns: undefined };
   pos_inventory_catalog: { Args: Record<string, never>; Returns: InventoryCatalogItem[] };
   pos_create_purchase: { Args: { p_request: string; p_note: string | null; p_items: Json }; Returns: string };
