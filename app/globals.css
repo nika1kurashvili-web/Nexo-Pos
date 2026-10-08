@@ -1287,3 +1287,24 @@ h1, h2, h3 { overflow-wrap: anywhere; }
 @media (max-height: 520px) {
   .app-header, .sidebar { position: static; }
 }
+
+/* customer orders (admin-only ledger) */
+.stat-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 1.25rem; max-width: 48rem; }
+.order-card h3 { margin: 1.25rem 0 0.5rem; font-size: 1rem; color: var(--text-muted); }
+.order-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 0.75rem 1.5rem; margin-bottom: 1rem; }
+.order-head h2 { margin: 0 0 0.2rem; }
+.order-figures { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem 1.5rem; color: var(--text-muted); }
+.order-figures strong { color: var(--text); margin-left: 0.3rem; }
+.order-figures .text-bad strong { color: #b42323; }
+.badge-warn { background: #fdeaea; color: #b42323; }
+.order-pay { max-width: none; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); align-items: end; margin-top: 1rem; padding: 1rem; border: 1px solid var(--border); border-radius: 0.65rem; background: var(--surface-soft); }
+.order-pay .button { margin-top: 0; }
+.order-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: 1rem; }
+.order-form { max-width: none; }
+.order-lines td input { min-width: 5rem; }
+.order-lines td:first-child input { min-width: 12rem; }
+.order-card details { margin-top: 1rem; }
+.order-card details > summary { margin: 0.5rem 0; font-weight: 600; }
+@media (max-width: 560px) { .stat-grid-3 { grid-template-columns: 1fr; } }
+.order-lines .button { width: auto; min-height: 2.4rem; padding: 0.3rem 0.7rem; }
+.order-card .table-scroll form .button { width: auto; min-height: 2.4rem; }

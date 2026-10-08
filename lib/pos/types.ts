@@ -54,6 +54,9 @@ export type PosStockMovement = { id: string; kind: "sale" | "return" | "purchase
 export type InventoryCatalogItem = { kind: "product" | "variant"; id: string; name: string; sku: string | null; price: Decimal | null; stock: Decimal; cost: Decimal | null };
 export type ProductCategory = "მანქანა" | "ტექნიკა";
 export type ProductOverviewItem = { kind: "product" | "variant"; id: string; product_id: string; category: ProductCategory | null; name: string; variant_name: string | null; sku: string | null; price: Decimal | null; stock: Decimal; cost: Decimal | null; active: boolean };
+export type CustomerOrderItem = { id: string; kind: "product" | "variant" | null; target: string | null; name: string; quantity: Decimal; unit_price: Decimal };
+export type CustomerOrderPayment = { id: string; amount: Decimal; paid_on: string; note: string | null };
+export type CustomerOrder = { id: string; order_date: string; note: string | null; total: Decimal; paid: Decimal; items: CustomerOrderItem[]; payments: CustomerOrderPayment[] };
 type Table<Row> = { Row: Row; Insert: Partial<Row>; Update: Partial<Row>; Relationships: [] };
 export type PosTables = {
   pos_cash_withdrawals: Table<CashWithdrawal>;
@@ -124,6 +127,11 @@ export type PosFunctions = {
   pos_employee_list: { Args: Record<string, never>; Returns: PosEmployee[] };
   pos_employee_lookup: { Args: { p_email: string }; Returns: { id: string; has_pos: boolean } | null };
   pos_employee_delete: { Args: { p_user: string }; Returns: string };
+  pos_corder_list: { Args: { p_customer: string }; Returns: CustomerOrder[] };
+  pos_corder_save: { Args: { p_request: string | null; p_order: string | null; p_customer: string; p_date: string; p_note: string | null; p_items: Json }; Returns: string };
+  pos_corder_delete: { Args: { p_order: string }; Returns: void };
+  pos_corder_payment_add: { Args: { p_request: string | null; p_order: string; p_amount: string; p_date: string; p_note: string | null }; Returns: string };
+  pos_corder_payment_delete: { Args: { p_payment: string }; Returns: void };
   pos_employee_save: { Args: { p_user: string; p_name: string; p_role: string; p_active: boolean }; Returns: string };
   pos_employee_password_request: { Args: { p_user: string; p_shared_confirm: boolean }; Returns: string };
   pos_employee_password_result: { Args: { p_request: string; p_success: boolean }; Returns: boolean };

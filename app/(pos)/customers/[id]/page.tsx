@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/auth/server";
 import { money, posClient } from "@/lib/pos/server";
@@ -231,6 +232,12 @@ export default async function CustomerPage({
   return (
     <>
       <h1>{customer.name}</h1>
+
+      <p>
+        <Link href={`/customers/${id}/orders`} className="button primary">
+          შეკვეთები (პირადი აღრიცხვა)
+        </Link>
+      </p>
 
       <Notice
         {...(await searchParams)}
