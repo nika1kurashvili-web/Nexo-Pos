@@ -44,5 +44,11 @@ export async function POST(request: Request) {
   const plan = buildImportPlan(table, data as ProductOverviewItem[]);
   if ("error" in plan) return Response.json({ error: plan.error }, { status: 400 });
   if (plan.changes.length > MAX_CHANGES) return Response.json({ error: "ერთ ჯერზე მაქსიმუმ 2000 ცვლილება შეიძლება." }, { status: 400 });
+  // რომელ გამოტოვებულ პროდუქტს აქვს ისტორია (გაუქმდება) და რომელი წაიშლება.
+  if (plan.removals.length > 0) {
+    const { data: used } = await client.rpc("pos_catalog_items_used", { p_ids: plan.removals.map((r) => r.id) });
+    const usedIds = new Set(Array.isArray(used) ? (used as string[]).map((id) => String(id).toLowerCase()) : []);
+    for (const removal of plan.removals) removal.used = usedIds.has(removal.id.toLowerCase());
+  }
   return Response.json(plan);
 }

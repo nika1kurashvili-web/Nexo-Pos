@@ -24,12 +24,14 @@ export default function ProductImportForm({ requestId }: { requestId: string }) 
   const [plan, setPlan] = useState<ImportPlan | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [parsing, startParse] = useTransition();
+  const [confirmRemove, setConfirmRemove] = useState(false);
 
   function upload() {
     const file = fileRef.current?.files?.[0];
     if (!file) return setMessage("აირჩიეთ Excel ფაილი.");
     setMessage(null);
     setPlan(null);
+    setConfirmRemove(false);
     startParse(async () => {
       try {
         const body = new FormData();
@@ -47,6 +49,10 @@ export default function ProductImportForm({ requestId }: { requestId: string }) 
   const created = plan?.changes.filter((c) => c.op === "create").length ?? 0;
   const updated = (plan?.changes.length ?? 0) - created;
   const blocked = (plan?.errors.length ?? 0) > 0;
+  const removals = plan?.removals ?? [];
+  const removedCount = confirmRemove ? removals.length : 0;
+  const deleteCount = removals.filter((r) => !r.used).length;
+  const nothing = (plan?.changes.length ?? 0) === 0 && removedCount === 0;
 
   return (
     <>
@@ -93,16 +99,44 @@ export default function ProductImportForm({ requestId }: { requestId: string }) 
             </table></div>
           )}
 
-          {plan.changes.length === 0 && !blocked && <p className="muted">ცვლილება არ არის: ფაილი სისტემის მონაცემებს ემთხვევა.</p>}
+          {plan.changes.length === 0 && removals.length === 0 && !blocked && <p className="muted">ცვლილება არ არის: ფაილი სისტემის მონაცემებს ემთხვევა.</p>}
 
-          {plan.changes.length > 0 && (
+          {removals.length > 0 && (
+            <div className="notice error" role="status">
+              <h3>ფაილში ვერ მოიძებნა: {removals.length} პროდუქტი</h3>
+              <p>
+                ესენი სისტემაში არის, მაგრამ თქვენს ფაილში არ არის. გამოტოვებული პროდუქტი ავტომატურად <strong>არ იშლება</strong>.
+                თუ მართლა გინდათ მათი მოცილება, მონიშნეთ ქვემოთ. {deleteCount > 0 && <>წაიშლება: <strong>{deleteCount}</strong>. </>}
+                {removals.length - deleteCount > 0 && <>გაუქმდება (გაყიდვის, შესყიდვის ან ორდერის ისტორიის გამო წაშლა არ შეიძლება): <strong>{removals.length - deleteCount}</strong>.</>}
+              </p>
+              <div className="table-scroll"><table className="products-table">
+                <thead><tr><th scope="col">პროდუქტი</th><th scope="col">ბარკოდი</th><th scope="col">მარაგი</th><th scope="col">რა მოუვა</th></tr></thead>
+                <tbody>{removals.map((r) => (
+                  <tr key={r.id}>
+                    <td><strong>{r.label}</strong></td>
+                    <td>{r.sku ?? "—"}</td>
+                    <td>{r.stock}</td>
+                    <td>{r.used ? "გაუქმდება (აქვს ისტორია)" : "წაიშლება სამუდამოდ"}</td>
+                  </tr>
+                ))}</tbody>
+              </table></div>
+              <label className="check">
+                <input type="checkbox" checked={confirmRemove} onChange={(e) => setConfirmRemove(e.target.checked)} />
+                ვადასტურებ: ეს {removals.length} პროდუქტი წაიშალოს ან გაუქმდეს
+              </label>
+            </div>
+          )}
+
+          {(plan.changes.length > 0 || removals.length > 0) && (
             <form action={importProducts}>
               <input type="hidden" name="request_id" value={requestId} />
               <input type="hidden" name="changes" value={JSON.stringify(plan.changes)} />
-              <button type="submit" className="button primary" disabled={blocked}>
-                დადასტურება და შენახვა ({plan.changes.length})
+              <input type="hidden" name="removals" value={JSON.stringify(confirmRemove ? removals.map((r) => r.id) : [])} />
+              <button type="submit" className="button primary" disabled={blocked || nothing}>
+                დადასტურება და შენახვა ({plan.changes.length + removedCount})
               </button>
               {blocked && <span className="muted"> — ჯერ შეასწორეთ შეცდომები</span>}
+              {!blocked && nothing && <span className="muted"> — არაფერია შესანახი (წასაშლელად მონიშნეთ ზემოთ)</span>}
             </form>
           )}
         </section>

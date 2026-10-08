@@ -5,7 +5,7 @@ import { createProduct, saveProduct, toggleProduct } from "./actions";
 
 export const dynamic = "force-dynamic";
 
-type Params = { updated?: string; imported?: string; q?: string; all?: string; saved?: string; created?: string; deactivated?: string; restored?: string; error?: string };
+type Params = { deleted?: string; updated?: string; imported?: string; q?: string; all?: string; saved?: string; created?: string; deactivated?: string; restored?: string; error?: string };
 
 const errors: Record<string, string> = {
   invalid: "შეამოწმეთ შეყვანილი მონაცემები.",
@@ -42,7 +42,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
 
   const active = items.filter((item) => item.active);
   const stockValue = active.reduce((sum, item) => sum + Math.max(0, Number(item.stock)) * Number(item.cost ?? 0), 0);
-  const notice = params.imported ? `Excel-ით განახლდა: ${Number(params.updated) || 0}, დაემატა: ${Number(params.created) || 0}.` :
+  const notice = params.imported ? `Excel-ით განახლდა: ${Number(params.updated) || 0}, დაემატა: ${Number(params.created) || 0}, წაიშალა: ${Number(params.deleted) || 0}, გაუქმდა (ისტორიის გამო): ${Number(params.deactivated) || 0}.` :
     params.saved ? "ცვლილება შენახულია." : params.created ? "პროდუქტი დაემატა." :
     params.deactivated ? "პროდუქტი გაუქმებულია (ისტორია შენარჩუნებულია)." : params.restored ? "პროდუქტი აღდგენილია." : null;
 

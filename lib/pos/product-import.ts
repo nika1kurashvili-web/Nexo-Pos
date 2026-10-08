@@ -23,8 +23,11 @@ export type ProductChange = {
   was: Partial<Record<keyof ProductFields, string>>;
 };
 
+export type ProductRemoval = { id: string; kind: "product" | "variant"; label: string; sku: string | null; stock: string; used?: boolean };
+
 export type ImportPlan = {
   changes: ProductChange[];
+  removals: ProductRemoval[];
   errors: { row: number; message: string }[];
   warnings: { row: number; message: string }[];
   unchanged: number;
@@ -71,7 +74,7 @@ export function buildImportPlan(table: unknown[][], current: ProductOverviewItem
   }
 
   const byId = new Map(current.map((item) => [item.id.toLowerCase(), item]));
-  const plan: ImportPlan = { changes: [], errors: [], warnings: [], unchanged: 0 };
+  const plan: ImportPlan = { changes: [], removals: [], errors: [], warnings: [], unchanged: 0 };
   const seen = new Set<string>();
   const finalSku = new Map<string, string>(); // item key -> lowercase sku
   for (const item of current) finalSku.set(item.id.toLowerCase(), norm(item.sku ?? ""));
@@ -175,6 +178,16 @@ export function buildImportPlan(table: unknown[][], current: ProductOverviewItem
   for (const touched of touchedSku) {
     if ((count.get(touched.sku) ?? 0) > 1) {
       plan.errors.push({ row: touched.row, message: "ეს ბარკოდი სხვა პროდუქტზე ან ვარიანტზე უკვე გამოიყენება." });
+    }
+  }
+  // ფაილში გამოტოვებული პროდუქტები: ავტომატურად არაფერი იშლება, მომხმარებელი ცალკე ადასტურებს.
+  if (seen.size > 0) {
+    for (const item of current) {
+      if (seen.has(item.id.toLowerCase())) continue;
+      plan.removals.push({
+        id: item.id, kind: item.kind, sku: item.sku, stock: String(Number(item.stock)),
+        label: item.variant_name ? `${item.name} / ${item.variant_name}` : item.name,
+      });
     }
   }
   plan.errors.sort((a, b) => a.row - b.row);

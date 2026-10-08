@@ -151,7 +151,18 @@ export async function importProducts(form: FormData) {
   } catch {
     redirect("/products/import?error=invalid");
   }
-  if (!Array.isArray(raw) || raw.length === 0 || raw.length > 2000) redirect("/products/import?error=invalid");
+  if (!Array.isArray(raw) || raw.length > 2000) redirect("/products/import?error=invalid");
+
+  let removeIds: unknown = [];
+  try {
+    removeIds = JSON.parse(String(form.get("removals") ?? "[]"));
+  } catch {
+    redirect("/products/import?error=invalid");
+  }
+  if (!Array.isArray(removeIds) || removeIds.length > 2000 || removeIds.some((id) => typeof id !== "string" || !uuidRe.test(id))) {
+    redirect("/products/import?error=invalid");
+  }
+  if (raw.length + removeIds.length === 0) redirect("/products/import?error=invalid");
 
   const items: Record<string, unknown>[] = [];
   for (const entry of raw as { row?: unknown; op?: unknown; id?: unknown; set?: Record<string, unknown> }[]) {
@@ -165,6 +176,8 @@ export async function importProducts(form: FormData) {
     items.push(item);
   }
 
+  for (const id of removeIds as string[]) items.push({ row: 0, op: "remove", id });
+
   const client = await rpcClient();
   const { data, error } = await client.rpc("pos_products_import", { p_request: requestId, p_items: items as never });
   if (error) {
@@ -173,7 +186,7 @@ export async function importProducts(form: FormData) {
     const row = /row (\d+)/.exec(error.details ?? "")?.[1];
     redirect(`/products/import?error=${known}${row ? `&row=${row}` : ""}`);
   }
-  const result = data as { created?: number; updated?: number } | null;
+  const result = data as { created?: number; updated?: number; deleted?: number; deactivated?: number } | null;
   revalidatePath("/products");
-  redirect(`/products?imported=1&created=${result?.created ?? 0}&updated=${result?.updated ?? 0}`);
+  redirect(`/products?imported=1&created=${result?.created ?? 0}&updated=${result?.updated ?? 0}&deleted=${result?.deleted ?? 0}&deactivated=${result?.deactivated ?? 0}`);
 }
