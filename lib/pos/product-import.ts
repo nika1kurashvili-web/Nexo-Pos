@@ -6,6 +6,7 @@ export const PRODUCT_SHEET_HEADER = [
 
 export type ProductFields = {
   name?: string;
+  product_name?: string;
   variant_name?: string;
   category?: string;
   sku?: string;
@@ -81,6 +82,7 @@ export function buildImportPlan(table: unknown[][], current: ProductOverviewItem
   const seen = new Set<string>();
   const finalSku = new Map<string, string>(); // item key -> lowercase sku
   for (const item of current) finalSku.set(item.id.toLowerCase(), norm(item.sku ?? ""));
+  const wantedName = new Map<string, { value: string; row: number }>();
   const wantedCategory = new Map<string, { value: string; row: number }>();
   const touchedSku: { row: number; key: string; sku: string }[] = [];
 
@@ -105,11 +107,19 @@ export function buildImportPlan(table: unknown[][], current: ProductOverviewItem
 
       if (item.kind === "product") {
         if (!name || name.length > 200) return error("პროდუქტის სახელი აუცილებელია (მაქს. 200 სიმბოლო).");
-        if (name !== item.name) { set.name = name; was.name = item.name; }
+        if (name !== item.name.trim()) { set.name = name; was.name = item.name; }
       } else {
-        if (name && name !== item.name) plan.warnings.push({ row, message: `„${item.name}“: ვარიანტის სტრიქონზე პროდუქტის სახელი არ იცვლება (შეცვალეთ ორდერების აპში).` });
+        // ვარიანტის სტრიქონზე შეცვლილი პროდუქტის სახელი მთელ პროდუქტს (ყველა ვარიანტს) გადაარქმევს.
+        if (name && name !== item.name.trim()) {
+          if (name.length > 200) return error("პროდუქტის სახელი ძალიან გრძელია (მაქს. 200 სიმბოლო).");
+          const parent = item.product_id ?? item.id;
+          const earlier = wantedName.get(parent);
+          if (earlier && earlier.value !== name) return error(`ერთი პროდუქტის ვარიანტებზე სხვადასხვა ახალი სახელია მითითებული (სტრიქონი ${earlier.row}).`);
+          wantedName.set(parent, { value: name, row });
+          set.product_name = name; was.product_name = item.name;
+        }
         const variant = get(col.variant);
-        if (col.variant >= 0 && variant !== (item.variant_name ?? "")) {
+        if (col.variant >= 0 && variant !== (item.variant_name ?? "").trim()) {
           if (!variant || variant.length > 200) return error("ვარიანტის სახელი აუცილებელია (მაქს. 200 სიმბოლო).");
           set.variant_name = variant; was.variant_name = item.variant_name ?? "";
         }

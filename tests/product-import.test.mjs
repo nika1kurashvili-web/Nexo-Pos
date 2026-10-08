@@ -92,3 +92,16 @@ test('category column: set, validate, per-product consistency', () => {
   const same = buildImportPlan([H2, [A, 'ჩანთა', 'a', '', '1', '', '', '', '']], cur);
   assert.equal(same.changes.length, 0);
 });
+
+test('product name changed on a variant row renames the whole product (no warning)', () => {
+  const cur = [
+    { kind: 'variant', id: A, product_id: C, name: 'მინის საწმენდი ', variant_name: 'a', sku: '1', price: '1', stock: '0', cost: null, active: true, category: null },
+    { kind: 'variant', id: B, product_id: C, name: 'მინის საწმენდი ', variant_name: 'b', sku: '2', price: '1', stock: '0', cost: null, active: true, category: null },
+  ];
+  const same = buildImportPlan([H, [A, 'მინის საწმენდი', 'a', '1', '', '', '', ''], [B, 'მინის საწმენდი', 'b', '2', '', '', '', '']], cur);
+  assert.equal(same.changes.length, 0); assert.equal(same.warnings.length, 0); // trailing space in DB is not a change
+  const one = buildImportPlan([H, [A, 'ახალი სახელი', 'a', '1', '', '', '', ''], [B, 'მინის საწმენდი', 'b', '2', '', '', '', '']], cur);
+  assert.deepEqual(one.changes.map((c) => c.set), [{ product_name: 'ახალი სახელი' }]);
+  const clash = buildImportPlan([H, [A, 'X', 'a', '1', '', '', '', ''], [B, 'Y', 'b', '2', '', '', '', '']], cur);
+  assert.equal(clash.errors.length, 1);
+});

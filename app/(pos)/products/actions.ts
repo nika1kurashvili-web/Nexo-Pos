@@ -160,7 +160,7 @@ const importErrors: Record<string, string> = {
   CATALOG_ITEM_UNAVAILABLE: "import_unavailable",
 };
 
-const importFields = ["name", "variant_name", "category", "sku", "price", "cost", "stock"] as const;
+const importFields = ["name", "product_name", "variant_name", "category", "sku", "price", "cost", "stock"] as const;
 
 export async function importProducts(form: FormData) {
   await requireAdmin();
