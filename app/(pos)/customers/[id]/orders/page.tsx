@@ -148,7 +148,7 @@ export default async function CustomerOrdersPage({
           custom: item.kind === null,
         }));
         return (
-          <details className="panel order-card" key={order.id}>
+          <details className={`panel order-card ${remaining > 0 ? "order-due" : "order-paid"}`} key={order.id}>
             <summary className="order-summary">
               <span className="order-date">
                 {order.order_date}

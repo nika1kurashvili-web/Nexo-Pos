@@ -1327,3 +1327,17 @@ h1, h2, h3 { overflow-wrap: anywhere; }
 
 .stat-grid-auto { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: 0.75rem; margin-bottom: 1rem; max-width: 64rem; }
 .report-filters .filter-actions { align-self: end; }
+
+/* შეკვეთის ზოლის ფერი: წითელი = დასაფარია, მწვანე = დაფარულია */
+.order-card.order-due { border-color: #f0b4b4; }
+.order-card.order-due > .order-summary { background: #fde6e6; border-left: 6px solid #d64545; }
+.order-card.order-due > .order-summary:hover { background: #fbd7d7; }
+.order-card.order-due[open] > .order-summary { background: #fbd7d7; border-bottom-color: #f0b4b4; }
+.order-card.order-paid { border-color: #a9dfbf; }
+.order-card.order-paid > .order-summary { background: #e3f6ea; border-left: 6px solid #2f9e5b; }
+.order-card.order-paid > .order-summary:hover { background: #d3f0de; }
+.order-card.order-paid[open] > .order-summary { background: #d3f0de; border-bottom-color: #a9dfbf; }
+.order-card.order-due .order-date { color: #8f1f1f; }
+.order-card.order-paid .order-date { color: #17703f; }
+.order-card.order-due .order-summary::before { color: #b42323; }
+.order-card.order-paid .order-summary::before { color: #17703f; }
