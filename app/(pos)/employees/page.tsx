@@ -2,7 +2,7 @@ import { requireAdmin } from "@/lib/auth/server";
 import { posClient } from "@/lib/pos/server";
 import { EmployeeForm } from "@/app/components/employee-form";
 import { SubmitButton } from "@/app/components/submit-button";
-import { addEmployee, updateEmployee, resetEmployeePassword } from "./actions";
+import { addEmployee, updateEmployee, resetEmployeePassword, deleteEmployee } from "./actions";
 
 export const dynamic = "force-dynamic";
 const errors: Record<string, string> = {
@@ -13,6 +13,8 @@ const errors: Record<string, string> = {
   MEMBERSHIP_METADATA_INVALID: "ანგარიშის წევრობის მონაცემები გადამოწმებას საჭიროებს. ცვლილება არ შენახულა.",
   SHARED_PASSWORD_CONFIRM_REQUIRED: "დაადასტურეთ, რომ პაროლის შეცვლა Orders-ში შესვლაზეც იმოქმედებს.",
   INVALID_EMPLOYEE: "შეამოწმეთ სახელი, ელფოსტა, როლი და დადასტურება.",
+  SELF_DELETE_FORBIDDEN: "საკუთარი ანგარიშის წაშლა დაუშვებელია.",
+  EMPLOYEE_HAS_HISTORY: "ამ თანამშრომელს გაყიდვების, სალაროს ან სხვა ისტორია აქვს, ამიტომ წაშლა შეუძლებელია. გამოიყენეთ „გათიშვა“ (გაუქმება).",
   POS_ACCESS_DENIED: "ამ მოქმედებისთვის აქტიური POS ადმინისტრატორის უფლებაა საჭირო.",
   existing_confirm: "ეს ელფოსტა უკვე არსებობს. მისთვის POS წვდომის დამატება/განახლება ცალკე მონიშნეთ და ხელახლა გაგზავნეთ. არსებული პაროლი არ შეიცვლება.",
   password: "დროებითი პაროლი უნდა შეიცავდეს 12–256 სიმბოლოს.",
@@ -22,22 +24,28 @@ const errors: Record<string, string> = {
   password_unknown: "პაროლის ცვლილების ან აუდიტის შედეგი ვერ დადასტურდა. ავტომატური გამეორება არ შესრულებულა; გადაამოწმეთ ანგარიში.",
   failed: "ცვლილება ვერ დასრულდა. თუ Auth ანგარიში უკვე შეიქმნა, ადმინისტრატორმა უნდა გადაამოწმოს POS წევრობა. ავტომატური წაშლა არ შესრულებულა.",
 };
-const events: Record<string,string> = { created:"POS წევრობა დაემატა",updated:"პროფილი/როლი/სტატუსი შეიცვალა",password_requested:"პაროლის შეცვლა მოთხოვნილია",password_succeeded:"პაროლი შეიცვალა",password_unknown:"პაროლის ცვლილების შედეგი გადასამოწმებელია" };
+const events: Record<string,string> = { created:"POS წევრობა დაემატა",updated:"პროფილი/როლი/სტატუსი შეიცვალა",password_requested:"პაროლის შეცვლა მოთხოვნილია",password_succeeded:"პაროლი შეიცვალა",password_unknown:"პაროლის ცვლილების შედეგი გადასამოწმებელია",deleted:"POS წევრობა წაიშალა" };
 
-export default async function EmployeesPage({ searchParams }: { searchParams: Promise<{error?:string;saved?:string}> }) {
+export default async function EmployeesPage({ searchParams }: { searchParams: Promise<{error?:string;saved?:string;deleted?:string}> }) {
   const actor = await requireAdmin();
   const params=await searchParams;
   const client=await posClient();
   const [{data:employees,error},{data:audit,error:auditError}]=await Promise.all([
     client.rpc("pos_employee_list",{}),
-    client.from("pos_employee_audit").select("id,actor_id,target_id,event,created_at").order("created_at",{ascending:false}).limit(50),
+    client.from("pos_employee_audit").select("id,actor_id,target_id,event,before_state,after_state,created_at").order("created_at",{ascending:false}).limit(50),
   ]);
   const failed=Boolean(error || !employees);
   const adminCount=employees?.filter(e=>e.active && e.role==="admin").length ?? 0;
-  const name=(id:string)=>employees?.find(e=>e.id===id)?.full_name ?? id;
+  const name=(id:string,state?:unknown[])=>{
+    const found=employees?.find(e=>e.id===id)?.full_name;
+    if(found) return found;
+    for(const st of state ?? []){ const n=(st as {name?:unknown} | null)?.name; if(typeof n==="string") return `${n} (წაშლილი)`; }
+    return id;
+  };
   return <>
     <h1>თანამშრომლები</h1>
     {params.error && <p className="notice error" role="alert">{errors[params.error] ?? errors.failed}</p>}
+    {params.deleted && <p className="notice success" role="status">თანამშრომლის POS წვდომა წაიშალა.</p>}
     {params.saved && <p className="notice success" role="status">ცვლილება შენახულია.</p>}
     {failed ? <p className="notice error" role="alert">თანამშრომლების მართვა მიუწვდომელია. გადაამოწმეთ კავშირი და თანამშრომლების მართვის migration. ცვლილებები არ გაგზავნოთ.</p> : <>
       <section className="panel">
@@ -56,6 +64,7 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
         <thead><tr>{["სახელი","ელფოსტა","POS როლი","სტატუსი","შექმნის თარიღი","მოქმედებები"].map(t=><th key={t} scope="col">{t}</th>)}</tr></thead>
         <tbody>{employees?.map(e=>{
           const cannotDisable=e.id===actor.id || e.has_open_session || (e.active && e.role==="admin" && adminCount===1);
+          const cannotDelete=e.id===actor.id || e.has_open_session || (e.active && e.role==="admin" && adminCount===1);
           return <tr key={e.id}>
             <td>{e.full_name}</td><td>{e.email ?? "ელფოსტა არ არის"}{e.has_orders && <p>Orders-ის საერთო ანგარიში</p>}</td>
             <td>{e.role==="admin"?"Admin":"მოლარე"}</td><td>{e.active?"აქტიური":"გათიშული"}{e.has_open_session && <p>სალარო გახსნილია</p>}</td>
@@ -78,13 +87,21 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
                   <SubmitButton pendingText="იცვლება…" className="button secondary">პაროლის შეცვლა</SubmitButton>
                 </EmployeeForm>
               </details>
+              <details><summary className="text-bad">თანამშრომლის წაშლა</summary>
+                {cannotDelete ? <p>წაშლა შეუძლებელია საკუთარი ანგარიშის, ბოლო admin-ის ან ღია სალაროს მქონე თანამშრომლისთვის.</p> : <EmployeeForm action={deleteEmployee} confirmation={`წავშალოთ „${e.full_name}“ POS სისტემიდან? თუ აქვს გაყიდვების ან სალაროს ისტორია, წაშლა არ შესრულდება და გათიშვა დაგჭირდებათ.`}>
+                  <input type="hidden" name="id" value={e.id}/>
+                  <p>წაიშლება მხოლოდ POS წვდომა. ანგარიში და Orders-ში შესვლა უცვლელი დარჩება. ისტორიის მქონე თანამშრომლის წაშლა შეუძლებელია — გამოიყენეთ „გათიშვა“.</p>
+                  <label className="check"><input type="checkbox" name="confirm_delete" value="yes" required/>ვადასტურებ, რომ ეს თანამშრომელი უნდა წაიშალოს.</label>
+                  <SubmitButton pendingText="იშლება…" className="button secondary">თანამშრომლის წაშლა</SubmitButton>
+                </EmployeeForm>}
+              </details>
             </td>
           </tr>;
         })}</tbody>
       </table></div></section>
     </>}
     <section className="panel"><h2>ბოლო 50 ცვლილება</h2>
-      {auditError ? <p>ცვლილებების ისტორია ვერ ჩაიტვირთა.</p> : <div className="table-scroll"><table><thead><tr><th>დრო</th><th>ვინ</th><th>თანამშრომელი</th><th>მოქმედება</th></tr></thead><tbody>{audit?.map(a=><tr key={a.id}><td>{new Date(a.created_at).toLocaleString("ka-GE",{timeZone:"Asia/Tbilisi"})}</td><td>{name(a.actor_id)}</td><td>{name(a.target_id)}</td><td>{events[a.event] ?? a.event}</td></tr>)}</tbody></table></div>}
+      {auditError ? <p>ცვლილებების ისტორია ვერ ჩაიტვირთა.</p> : <div className="table-scroll"><table><thead><tr><th>დრო</th><th>ვინ</th><th>თანამშრომელი</th><th>მოქმედება</th></tr></thead><tbody>{audit?.map(a=><tr key={a.id}><td>{new Date(a.created_at).toLocaleString("ka-GE",{timeZone:"Asia/Tbilisi"})}</td><td>{name(a.actor_id)}</td><td>{name(a.target_id,[a.before_state,a.after_state])}</td><td>{events[a.event] ?? a.event}</td></tr>)}</tbody></table></div>}
     </section>
   </>;
 }

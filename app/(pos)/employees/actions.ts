@@ -7,7 +7,7 @@ import { posClient } from "@/lib/pos/server";
 import { createAuthAdminClient } from "@/lib/supabase/admin";
 import { employeeAdminFailure } from "@/lib/supabase/admin-diagnostics";
 
-const messages = new Set(["SELF_DISABLE_FORBIDDEN", "SELF_DEMOTION_FORBIDDEN", "LAST_ADMIN", "EMPLOYEE_OPEN_SESSION", "MEMBERSHIP_METADATA_INVALID", "SHARED_PASSWORD_CONFIRM_REQUIRED", "INVALID_EMPLOYEE", "POS_ACCESS_DENIED"]);
+const messages = new Set(["SELF_DISABLE_FORBIDDEN", "SELF_DEMOTION_FORBIDDEN", "LAST_ADMIN", "EMPLOYEE_OPEN_SESSION", "MEMBERSHIP_METADATA_INVALID", "SHARED_PASSWORD_CONFIRM_REQUIRED", "INVALID_EMPLOYEE", "POS_ACCESS_DENIED", "SELF_DELETE_FORBIDDEN", "EMPLOYEE_HAS_HISTORY"]);
 function fail(error?: { message?: string } | null): never {
   redirect(`/employees?error=${error?.message && messages.has(error.message) ? error.message : "failed"}`);
 }
@@ -81,4 +81,15 @@ export async function resetEmployeePassword(form: FormData) {
   const audit=await admin.rpc("pos_employee_password_result", {p_request:authorized.data,p_success:success});
   if (!success || audit.error || !audit.data) redirect("/employees?error=password_unknown");
   done();
+}
+
+export async function deleteEmployee(form: FormData) {
+  await requireAdmin();
+  const id = field(form, "id");
+  if (field(form, "confirmed") !== "yes" || field(form, "confirm_delete") !== "yes" || !uuid(id)) fail({ message: "INVALID_EMPLOYEE" });
+  const client = await posClient();
+  const removed = await client.rpc("pos_employee_delete", { p_user: id });
+  if (removed.error) fail(removed.error);
+  revalidatePath("/", "layout");
+  redirect("/employees?deleted=1");
 }
