@@ -5,6 +5,8 @@ import { posClient, money } from "@/lib/pos/server";
 import { Notice } from "@/app/components/pos-forms";
 import type { PosReturnItem } from "@/lib/pos/types";
 import { ReceiptPrintButton } from "@/app/components/receipt-print-button";
+import { ReturnStatusBadge } from "@/app/components/return-status-badge";
+import { computeReturnStatus } from "@/lib/pos/return-status";
 
 export const dynamic = "force-dynamic";
 
@@ -98,7 +100,10 @@ export default async function SaleDetailsPage({
         <Link href="/sales">← გაყიდვებზე დაბრუნება</Link>
       </p>
 
-      <h1>გაყიდვა №{sale?.sale_number}</h1>
+      <h1>
+        გაყიდვა №{sale?.sale_number}{" "}
+        <ReturnStatusBadge status={computeReturnStatus(items ?? [], returnItems)} />
+      </h1>
 
       <Notice loadError={Boolean(saleError || itemsError || paymentsError || returnsError || returnItemsError)} />
 

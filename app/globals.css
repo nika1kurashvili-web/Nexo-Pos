@@ -1341,3 +1341,9 @@ h1, h2, h3 { overflow-wrap: anywhere; }
 .order-card.order-paid .order-date { color: #17703f; }
 .order-card.order-due .order-summary::before { color: #b42323; }
 .order-card.order-paid .order-summary::before { color: #17703f; }
+
+/* return status badges */
+.badge-return-partial { background: #fff1cf; color: #8a5a00; }
+.badge-return-full { background: #fde6e6; color: #b42323; }
+.return-badges { display: inline-flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
+h1 .badge { font-size: 0.85rem; vertical-align: middle; margin-left: 0.4rem; }

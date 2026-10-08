@@ -4,6 +4,8 @@ import type { Sale } from "@/lib/pos/types";
 import { requirePosProfile } from "@/lib/auth/server";
 import { posClient, money } from "@/lib/pos/server";
 import { Notice } from "@/app/components/pos-forms";
+import { ReturnStatusBadge } from "@/app/components/return-status-badge";
+import { loadReturnStatuses } from "@/lib/pos/return-status-load";
 
 export const dynamic = "force-dynamic";
 
@@ -196,6 +198,8 @@ export default async function SalesPage({
     error = result.error;
   }
 
+  const returnStatuses = data?.length ? await loadReturnStatuses(client, data.map((sale) => sale.id)) : new Map();
+
   return (
     <>
       <h1>გაყიდვები</h1>
@@ -317,6 +321,7 @@ export default async function SalesPage({
                 <th>სულ</th>
                 <th>გადახდილი</th>
                 <th>დავალიანება</th>
+                <th>დაბრუნება</th>
                 <th></th>
               </tr>
             </thead>
@@ -351,6 +356,8 @@ export default async function SalesPage({
                   <td>{money(sale.paid_total)}</td>
 
                   <td>{money(sale.debt_amount)}</td>
+
+                  <td><ReturnStatusBadge status={returnStatuses.get(sale.id) ?? "none"} /></td>
 
                   <td>
                     <Link

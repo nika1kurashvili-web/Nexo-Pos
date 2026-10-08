@@ -3,6 +3,9 @@ import { requirePosProfile } from "@/lib/auth/server";
 import { posClient, money } from "@/lib/pos/server";
 import type { ReturnSaleDetails } from "@/lib/pos/types";
 import ReturnForm from "@/app/components/return-form";
+import { ReturnStatusBadge } from "@/app/components/return-status-badge";
+import { computeReturnStatus } from "@/lib/pos/return-status";
+import { loadReturnStatuses } from "@/lib/pos/return-status-load";
 
 export const dynamic = "force-dynamic";
 
@@ -82,6 +85,36 @@ export default async function ReturnsPage({
       .maybeSingle();
     recovered = data ?? null;
   }
+
+  // ისტორია: ბოლო დაბრუნებები და (თუ ქვითარი მოიძებნა) ამ ქვითრის დაბრუნებები.
+  const { data: recentReturns } = await client
+    .from("pos_returns")
+    .select("id,return_number,sale_id,actor_name,reason,total_amount,created_at")
+    .order("created_at", { ascending: false })
+    .limit(30);
+  const historySaleIds = [...new Set((recentReturns ?? []).map((r) => r.sale_id))];
+  const [{ data: historySales }, historyStatuses] = await Promise.all([
+    historySaleIds.length
+      ? client.from("pos_sales").select("id,sale_number").in("id", historySaleIds)
+      : Promise.resolve({ data: [] as { id: string; sale_number: number }[] }),
+    loadReturnStatuses(client, historySaleIds),
+  ]);
+  const saleNumberById = new Map((historySales ?? []).map((sale) => [sale.id, sale.sale_number]));
+
+  const { data: saleReturns } = details
+    ? await client.from("pos_returns").select("id,return_number,actor_name,reason,total_amount,created_at").eq("sale_id", details.sale.id).order("created_at")
+    : { data: null };
+  const saleReturnIds = (saleReturns ?? []).map((r) => r.id);
+  const { data: saleReturnItems } = saleReturnIds.length
+    ? await client.from("pos_return_items").select("return_id,sale_item_id,quantity").in("return_id", saleReturnIds)
+    : { data: null };
+  const itemNames = new Map((details?.items ?? []).map((item) => [item.id, item.product_name + (item.variant_name ? ` / ${item.variant_name}` : "")]));
+  const saleStatus = details
+    ? computeReturnStatus(
+        details.items.map((item) => ({ id: item.id, quantity: item.quantity })),
+        details.items.map((item) => ({ sale_item_id: item.id, quantity: item.returned_quantity })),
+      )
+    : "none";
 
   const requestId = crypto.randomUUID();
   const loadError = Boolean(sessionError || methodError || lookupFailed);
@@ -163,8 +196,11 @@ export default async function ReturnsPage({
                   {details.sale.customer_name ? ` · ${details.sale.customer_name}` : ""}
                 </p>
               </div>
-              <span className="badge badge-success">
-                {details.sale.sale_type === "retail" ? "საცალო" : "საბითუმო"}
+              <span className="return-badges">
+                <ReturnStatusBadge status={saleStatus} />
+                <span className="badge badge-success">
+                  {details.sale.sale_type === "retail" ? "საცალო" : "საბითუმო"}
+                </span>
               </span>
             </div>
             <div className="stat-grid stat-grid-2">
@@ -212,8 +248,74 @@ export default async function ReturnsPage({
               requestId={requestId}
             />
           )}
+
+          {(saleReturns?.length ?? 0) > 0 && (
+            <section className="panel">
+              <h2>ამ ქვითრის დაბრუნებები</h2>
+              <div className="table-scroll">
+                <table>
+                  <thead>
+                    <tr><th>№</th><th>თარიღი</th><th>ვინ გააფორმა</th><th>ნივთები</th><th>თანხა</th><th>მიზეზი</th></tr>
+                  </thead>
+                  <tbody>
+                    {saleReturns?.map((r) => (
+                      <tr key={r.id}>
+                        <td>#{r.return_number}</td>
+                        <td>{new Date(r.created_at).toLocaleString("ka-GE", { timeZone: "Asia/Tbilisi" })}</td>
+                        <td>{r.actor_name}</td>
+                        <td className="wrap">
+                          {(saleReturnItems ?? [])
+                            .filter((ri) => ri.return_id === r.id)
+                            .map((ri) => `${itemNames.get(ri.sale_item_id) ?? "—"} × ${Number(ri.quantity)}`)
+                            .join(", ")}
+                        </td>
+                        <td><strong>{money(r.total_amount)}</strong></td>
+                        <td className="wrap">{r.reason}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
         </>
       )}
+
+      <section className="panel">
+        <h2>დაბრუნებების ისტორია</h2>
+        <p className="muted">ბოლო 30 დაბრუნება. სტატუსი გვიჩვენებს ქვითრის ამჟამინდელ მდგომარეობას.</p>
+        {(recentReturns?.length ?? 0) === 0 ? (
+          <p className="muted">დაბრუნება ჯერ არ არის გაფორმებული.</p>
+        ) : (
+          <div className="table-scroll">
+            <table>
+              <thead>
+                <tr><th>დაბრუნება №</th><th>თარიღი</th><th>ქვითარი</th><th>სტატუსი</th><th>ვინ გააფორმა</th><th>თანხა</th><th>მიზეზი</th></tr>
+              </thead>
+              <tbody>
+                {recentReturns?.map((r) => {
+                  const saleNumber = saleNumberById.get(r.sale_id);
+                  return (
+                    <tr key={r.id}>
+                      <td>#{r.return_number}</td>
+                      <td>{new Date(r.created_at).toLocaleString("ka-GE", { timeZone: "Asia/Tbilisi" })}</td>
+                      <td>
+                        {saleNumber !== undefined ? (
+                          <Link href={`/returns?number=${saleNumber}`}>№{saleNumber}</Link>
+                        ) : "—"}
+                      </td>
+                      <td><ReturnStatusBadge status={historyStatuses.get(r.sale_id) ?? "none"} /></td>
+                      <td>{r.actor_name}</td>
+                      <td><strong>{money(r.total_amount)}</strong></td>
+                      <td className="wrap">{r.reason}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
     </>
   );
 }
