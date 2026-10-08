@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/auth/server";
 import { money, posClient } from "@/lib/pos/server";
 import { fetchAll } from "@/lib/pos/paginate";
+import { filterOrders, orderFigures, sumFigures } from "@/lib/pos/customer-orders";
 import CustomerOrderForm, { ConfirmForm, type OrderLine } from "@/app/components/customer-order-form";
 import { SubmitButton } from "@/app/components/submit-button";
 import { addOrderPayment, deleteCustomerOrder, deleteOrderPayment } from "./actions";
@@ -30,7 +31,6 @@ const saved: Record<string, string> = {
 
 const tbilisiDate = (value: string | Date) =>
   new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Tbilisi" }).format(new Date(value));
-const cents = (value: string | number) => Math.round(Number(value) * 100);
 const qty = (value: string | number) => String(Number(value));
 
 export default async function CustomerOrdersPage({
@@ -38,7 +38,7 @@ export default async function CustomerOrdersPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string; saved?: string }>;
+  searchParams: Promise<{ error?: string; saved?: string; from?: string; to?: string }>;
 }) {
   await requireAdmin();
   const { id } = await params;
@@ -66,7 +66,12 @@ export default async function CustomerOrdersPage({
   const customer = customerRes.data;
 
   const ordersFailed = Boolean(ordersRes.error);
-  const orders = ordersRes.data ?? [];
+  const allOrders = ordersRes.data ?? [];
+  const from = /^\d{4}-\d{2}-\d{2}$/.test(query.from ?? "") ? (query.from as string) : "";
+  const to = /^\d{4}-\d{2}-\d{2}$/.test(query.to ?? "") ? (query.to as string) : "";
+  const filtered = Boolean(from || to);
+  const orders = filterOrders(allOrders, from, to);
+  const exportHref = `/customers/${id}/orders/export${filtered ? `?${new URLSearchParams({ ...(from ? { from } : {}), ...(to ? { to } : {}) }).toString()}` : ""}`;
   const catalog = catalogRes.data ?? [];
 
   const customerPrices: Record<string, string> = {};
@@ -75,8 +80,7 @@ export default async function CustomerOrdersPage({
     else if (row.product_id !== null) customerPrices[`product:${row.product_id}`] = String(Number(row.price));
   }
 
-  const sumTotal = orders.reduce((s, o) => s + cents(o.total), 0);
-  const sumPaid = orders.reduce((s, o) => s + cents(o.paid), 0);
+  const sums = sumFigures(orders);
   const today = tbilisiDate(new Date());
   const newRequestId = crypto.randomUUID();
 
@@ -93,11 +97,14 @@ export default async function CustomerOrdersPage({
       {query.saved && saved[query.saved] && <p className="notice success" role="status">{saved[query.saved]}</p>}
       {ordersFailed && <p className="notice error" role="alert">შეკვეთები ვერ ჩაიტვირთა. გაუშვით მიგრაცია 202610090001 Supabase-ში.</p>}
 
-      <div className="stat-grid stat-grid-3">
-        <div className="stat"><span>შეკვეთების ჯამი</span><strong>{money(sumTotal / 100)}</strong></div>
-        <div className="stat"><span>გადახდილი</span><strong>{money(sumPaid / 100)}</strong></div>
-        <div className="stat stat-highlight"><span>დარჩენილი ვალი</span><strong>{money((sumTotal - sumPaid) / 100)}</strong></div>
+      <div className="stat-grid stat-grid-auto">
+        <div className="stat"><span>შეკვეთების ჯამი</span><strong>{money(sums.total / 100)}</strong></div>
+        <div className="stat"><span>გადახდილი</span><strong>{money(sums.paid / 100)}</strong></div>
+        <div className="stat stat-highlight"><span>დარჩენილი ვალი</span><strong>{money(sums.remaining / 100)}</strong></div>
+        <div className="stat"><span>შესყიდვის ღირებულება</span><strong>{money(sums.cost / 100)}</strong></div>
+        <div className="stat"><span>სავარაუდო მოგება</span><strong>{money(sums.profit / 100)}</strong></div>
       </div>
+      {sums.missing > 0 && <p className="muted">მოგება და შესყიდვა არ მოიცავს {sums.missing} პოზიციას, რომელსაც შესყიდვის ფასი არ აქვს.</p>}
 
       <section className="panel">
         <h2>ახალი შეკვეთა</h2>
@@ -111,8 +118,25 @@ export default async function CustomerOrdersPage({
         />
       </section>
 
+      <section className="panel">
+        <form method="get" className="data-form report-filters">
+          <label>თარიღიდან<input name="from" type="date" defaultValue={from} /></label>
+          <label>თარიღამდე<input name="to" type="date" defaultValue={to} /></label>
+          <div className="filter-actions">
+            <button type="submit" className="button primary">გაფილტვრა</button>
+            <Link href={`/customers/${id}/orders`} className="button secondary">გასუფთავება</Link>
+            <a href={exportHref} className="button secondary">Excel-ის ჩამოტვირთვა</a>
+          </div>
+        </form>
+        <p className="muted">
+          {filtered ? `ნაჩვენებია ${orders.length} შეკვეთა ${allOrders.length}-დან (თარიღი შეკვეთის თარიღია).` : `სულ ${allOrders.length} შეკვეთა.`}
+          {" "}ზემოთ მოცემული ციფრები და Excel ფაილი ფილტრს მიჰყვება.
+        </p>
+      </section>
+
       {orders.map((order) => {
-        const remaining = cents(order.total) - cents(order.paid);
+        const figures = orderFigures(order);
+        const remaining = figures.remaining;
         const lines: OrderLine[] = order.items.map((item) => ({
           key: item.kind && item.target ? `${item.kind}:${item.target}` : `line:${item.id}`,
           kind: item.kind,
@@ -120,40 +144,48 @@ export default async function CustomerOrdersPage({
           name: item.name,
           quantity: qty(item.quantity),
           price: String(Number(item.unit_price)),
+          cost: item.unit_cost === null ? "" : String(Number(item.unit_cost)),
           custom: item.kind === null,
         }));
         return (
-          <section className="panel order-card" key={order.id}>
-            <div className="order-head">
-              <div>
-                <h2>{order.order_date}</h2>
-                {order.note && <p className="muted">{order.note}</p>}
-              </div>
-              <div className="order-figures">
+          <details className="panel order-card" key={order.id}>
+            <summary className="order-summary">
+              <span className="order-date">
+                {order.order_date}
+                {order.note && <span className="muted"> · {order.note}</span>}
+              </span>
+              <span className="order-figures">
                 <span>ჯამი <strong>{money(order.total)}</strong></span>
                 <span>გადახდილი <strong>{money(order.paid)}</strong></span>
                 <span className={remaining > 0 ? "text-bad" : undefined}>
                   დარჩა <strong>{money(remaining / 100)}</strong>
                 </span>
                 <span className={`badge ${remaining > 0 ? "badge-warn" : "badge-success"}`}>{remaining > 0 ? "ვალია" : "დაფარულია"}</span>
-              </div>
-            </div>
+              </span>
+            </summary>
 
+            <div className="order-body">
             <div className="table-scroll">
               <table>
-                <thead><tr><th>პროდუქტი</th><th>რაოდენობა</th><th>ფასი</th><th>ჯამი</th></tr></thead>
+                <thead><tr><th>პროდუქტი</th><th>რაოდენობა</th><th>გასაყიდი ფასი</th><th>შესყიდვის ფასი</th><th>ჯამი</th></tr></thead>
                 <tbody>
                   {order.items.map((item) => (
                     <tr key={item.id}>
                       <td>{item.name}</td>
                       <td>{qty(item.quantity)}</td>
                       <td>{money(item.unit_price)}</td>
+                      <td>{item.unit_cost === null ? "—" : money(item.unit_cost)}</td>
                       <td>{money(Math.round(Number(item.quantity) * Number(item.unit_price) * 100) / 100)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+
+            <p className="muted">
+              შესყიდვა: <strong>{money(figures.cost / 100)}</strong> · სავარაუდო მოგება: <strong>{money(figures.profit / 100)}</strong>
+              {figures.missing > 0 && ` (${figures.missing} პოზიციას შესყიდვის ფასი არ აქვს)`}
+            </p>
 
             <h3>გადახდები</h3>
             {order.payments.length === 0 ? (
@@ -218,7 +250,8 @@ export default async function CustomerOrdersPage({
                 <SubmitButton pendingText="იშლება…" className="button secondary">შეკვეთის წაშლა</SubmitButton>
               </ConfirmForm>
             </details>
-          </section>
+            </div>
+          </details>
         );
       })}
 

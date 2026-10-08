@@ -30,7 +30,7 @@ function fail(customer: string, error?: { message?: string } | null): never {
   redirect(`${back(customer)}?error=${(error?.message && errorCodes[error.message]) || "failed"}`);
 }
 
-type RawItem = { kind?: unknown; target?: unknown; name?: unknown; quantity?: unknown; unit_price?: unknown };
+type RawItem = { kind?: unknown; target?: unknown; name?: unknown; quantity?: unknown; unit_price?: unknown; unit_cost?: unknown };
 
 export async function saveCustomerOrder(form: FormData) {
   await requireAdmin();
@@ -48,15 +48,16 @@ export async function saveCustomerOrder(form: FormData) {
   try { raw = JSON.parse(String(form.get("items") ?? "")); } catch { redirect(`${back(customer)}?error=items`); }
   if (!Array.isArray(raw) || raw.length === 0 || raw.length > 300) redirect(`${back(customer)}?error=items`);
 
-  const items: { kind: string | null; target: string | null; name: string; quantity: string; unit_price: string }[] = [];
+  const items: { kind: string | null; target: string | null; name: string; quantity: string; unit_price: string; unit_cost: string | null }[] = [];
   for (const row of raw as RawItem[]) {
     const quantity = String(row.quantity ?? "");
     const price = String(row.unit_price ?? "");
+    const cost = String(row.unit_cost ?? "").trim();
     const name = String(row.name ?? "").trim();
     const kind = row.kind === "product" || row.kind === "variant" ? row.kind : null;
     const target = typeof row.target === "string" && uuidRe.test(row.target) ? row.target : null;
-    if (!name || name.length > 300 || !isQuantity(quantity) || !isPrice(price)) redirect(`${back(customer)}?error=items`);
-    items.push({ kind, target, name, quantity: normalizeDecimal(quantity), unit_price: normalizeDecimal(price) });
+    if (!name || name.length > 300 || !isQuantity(quantity) || !isPrice(price) || (cost !== "" && !isPrice(cost))) redirect(`${back(customer)}?error=items`);
+    items.push({ kind, target, name, quantity: normalizeDecimal(quantity), unit_price: normalizeDecimal(price), unit_cost: cost === "" ? null : normalizeDecimal(cost) });
   }
 
   const client = await rpcClient();

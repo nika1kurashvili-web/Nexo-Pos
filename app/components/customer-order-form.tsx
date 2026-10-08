@@ -12,6 +12,7 @@ export type OrderLine = {
   name: string;
   quantity: string;
   price: string;
+  cost: string;
   custom: boolean;
 };
 
@@ -61,6 +62,8 @@ export default function CustomerOrderForm({
 
   const results = useMemo(() => (query.trim() ? searchCatalog(catalog, query, 30) : []), [catalog, query]);
 
+  const defaultCost = (item: InventoryCatalogItem) => (item.cost === null ? "" : String(Number(item.cost)));
+
   const defaultPrice = (item: InventoryCatalogItem) => {
     const special = customerPrices[itemKey(item)];
     if (special !== undefined) return special;
@@ -79,7 +82,7 @@ export default function CustomerOrderForm({
     const key = itemKey(item);
     setLines((current) => {
       if (current.some((line) => line.key === key)) return current;
-      return [{ key, kind: item.kind, target: item.id, name: item.name, quantity: "1", price: defaultPrice(item), custom: false }, ...current];
+      return [{ key, kind: item.kind, target: item.id, name: item.name, quantity: "1", price: defaultPrice(item), cost: defaultCost(item), custom: false }, ...current];
     });
     setQuery("");
     focusQty(key);
@@ -88,7 +91,7 @@ export default function CustomerOrderForm({
   function addCustom() {
     const key = `custom:${customCount}`;
     setCustomCount((n) => n + 1);
-    setLines((current) => [{ key, kind: null, target: null, name: "", quantity: "1", price: "", custom: true }, ...current]);
+    setLines((current) => [{ key, kind: null, target: null, name: "", quantity: "1", price: "", cost: "", custom: true }, ...current]);
   }
 
   function onSearchKey(event: React.KeyboardEvent<HTMLInputElement>) {
@@ -99,7 +102,7 @@ export default function CustomerOrderForm({
     if (results.length === 1) add(results[0]);
   }
 
-  const update = (key: string, patch: Partial<Pick<OrderLine, "quantity" | "price" | "name">>) =>
+  const update = (key: string, patch: Partial<Pick<OrderLine, "quantity" | "price" | "cost" | "name">>) =>
     setLines((current) => current.map((l) => (l.key === key ? { ...l, ...patch } : l)));
 
   const lineTotal = (l: OrderLine) =>
@@ -110,12 +113,20 @@ export default function CustomerOrderForm({
   const valid =
     lines.length > 0 &&
     Boolean(date) &&
-    lines.every((l) => l.name.trim().length > 0 && isQuantity(l.quantity) && isPrice(l.price));
+    lines.every((l) => l.name.trim().length > 0 && isQuantity(l.quantity) && isPrice(l.price) && (l.cost.trim() === "" || isPrice(l.cost)));
 
   const total = lines.reduce((sum, l) => sum + (lineTotal(l) ?? 0), 0);
+  const costTotal = lines.reduce(
+    (sum, l) =>
+      sum +
+      (isQuantity(l.quantity) && l.cost.trim() !== "" && isPrice(l.cost)
+        ? Math.round(Number(normalizeDecimal(l.quantity)) * Number(normalizeDecimal(l.cost)) * 100) / 100
+        : 0),
+    0,
+  );
 
   const payload = JSON.stringify(
-    lines.map((l) => ({ kind: l.kind, target: l.target, name: l.name.trim(), quantity: l.quantity, unit_price: l.price })),
+    lines.map((l) => ({ kind: l.kind, target: l.target, name: l.name.trim(), quantity: l.quantity, unit_price: l.price, unit_cost: l.cost.trim() })),
   );
 
   return (
@@ -165,7 +176,7 @@ export default function CustomerOrderForm({
         <div className="table-scroll">
           <table className="order-lines">
             <thead>
-              <tr><th>პროდუქტი</th><th>რაოდენობა</th><th>ფასი (₾)</th><th>ჯამი</th><th /></tr>
+              <tr><th>პროდუქტი</th><th>რაოდენობა</th><th>გასაყიდი ფასი (₾)</th><th>შესყიდვის ფასი (₾)</th><th>ჯამი</th><th /></tr>
             </thead>
             <tbody>
               {lines.map((l) => {
@@ -210,6 +221,17 @@ export default function CustomerOrderForm({
                         aria-label="ფასი"
                       />
                     </td>
+                    <td>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={l.cost}
+                        onChange={(e) => update(l.key, { cost: e.target.value })}
+                        aria-invalid={l.cost.trim() !== "" && !isPrice(l.cost)}
+                        aria-label="შესყიდვის ფასი"
+                        placeholder="—"
+                      />
+                    </td>
                     <td>{sum === null ? "—" : gel(sum)}</td>
                     <td>
                       <button type="button" className="button secondary" onClick={() => setLines((c) => c.filter((x) => x.key !== l.key))} aria-label="წაშლა">✕</button>
@@ -222,7 +244,7 @@ export default function CustomerOrderForm({
         </div>
       )}
 
-      <p><strong>სულ: {gel(total)}</strong></p>
+      <p><strong>სულ: {gel(total)}</strong>{" "}<span className="muted">· შესყიდვა: {gel(costTotal)}</span></p>
 
       <div className="order-meta">
         <label>
