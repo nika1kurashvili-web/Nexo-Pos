@@ -1168,3 +1168,122 @@ td.wrap { min-width: 14rem; max-width: 28rem; overflow-wrap: anywhere; }
 .text-bad { color: #b42323; }
 .products-table .cell-select { padding: 0.4rem 0.6rem; border-radius: 0.55rem; background: #f4f6fb; border: 1px solid transparent; font: inherit; }
 .products-table .cell-select:hover { background: #fff; border-color: #cfd6e4; }
+
+/* =========================
+   RESPONSIVE: ნებისმიერი ზომის ეკრანი
+   (ტელეფონი, პლანშეტი, ლეპტოპი, დიდი მონიტორი)
+   ========================= */
+
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+img, svg, video, canvas { max-width: 100%; height: auto; }
+h1, h2, h3 { overflow-wrap: anywhere; }
+
+/* ნაკადში ელემენტები არ უნდა აფართოებდნენ გვერდს */
+.main-content > *,
+.panel,
+.data-form > *,
+.inline-form > * { min-width: 0; }
+
+/* სითხისებრი დაშორებები: პატარა ეკრანზე ვიწროვდება, დიდზე ფართოვდება */
+.app-header { padding-inline: clamp(1rem, 2.5vw, 2rem); }
+.main-content { padding: clamp(1rem, 2.6vw, 2.5rem); }
+.panel { padding: clamp(1rem, 2.2vw, 2rem); }
+.app-shell { grid-template-columns: clamp(12rem, 16vw, 16rem) minmax(0, 1fr); }
+.app-shell.auth-shell { grid-template-columns: minmax(0, 1fr); }
+
+/* ძალიან დიდი ეკრანები (მონიტორი, TV): ზომები პროპორციულად იზრდება */
+@media (min-width: 1700px) {
+  :root { font-size: 17px; }
+  .main-content { max-width: 120rem; }
+}
+@media (min-width: 2300px) {
+  :root { font-size: 20px; }
+}
+@media (min-width: 3000px) {
+  :root { font-size: 26px; }
+}
+
+/* გაყიდვის ეკრანი: ორი სვეტი მხოლოდ საკმარისად ფართო ეკრანზე */
+.sale-terminal { grid-template-columns: minmax(0, 1.35fr) minmax(340px, 0.85fr); }
+@media (max-width: 1200px) {
+  .sale-terminal { grid-template-columns: minmax(0, 1fr); }
+  .sale-terminal > .panel:last-child { position: static; }
+}
+
+/* პლანშეტი */
+@media (max-width: 1000px) {
+  .app-shell { grid-template-columns: 12rem minmax(0, 1fr); }
+  .sidebar { padding: 1rem 0.6rem; }
+  .sidebar .sidebar-link { padding: 0.65rem 0.75rem; font-size: 0.93rem; }
+  .atiles { grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); }
+}
+
+/* ტელეფონი და ვიწრო ფანჯარა: მენიუ ხდება ერთ ხაზად, გვერდზე გადასაწევი */
+@media (max-width: 760px) {
+  .app-shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto 1fr; }
+  .app-header { position: static; flex-wrap: nowrap; gap: 0.75rem; padding: 0.7rem 1rem; }
+  .brand { font-size: 1.25rem; }
+  .account { gap: 0.75rem; flex-wrap: nowrap; }
+  .account-details { text-align: right; gap: 0.1rem; }
+  .account-details strong { font-size: 0.88rem; }
+  .account-details span { font-size: 0.75rem; }
+  .account .button { min-height: 2.4rem; padding: 0.4rem 0.8rem; font-size: 0.9rem; }
+
+  .sidebar { position: sticky; top: 0; z-index: 4; padding: 0.5rem 0.75rem; box-shadow: 0 1px 0 var(--border), var(--shadow-sm); }
+  .sidebar nav {
+    flex-direction: row; flex-wrap: nowrap; align-items: center; gap: 0.5rem;
+    overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none;
+    -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity;
+  }
+  .sidebar nav::-webkit-scrollbar { display: none; }
+  .sidebar-group { flex-direction: row; flex-wrap: nowrap; flex: none; gap: 0.35rem; align-items: center; }
+  .sidebar-admin-group { padding-top: 0; padding-left: 0.5rem; border-top: 0; border-left: 1px solid var(--border); }
+  .sidebar-section-title { display: none; }
+  .sidebar .sidebar-link { flex: none; white-space: nowrap; min-height: 2.5rem; padding: 0.5rem 0.85rem; scroll-snap-align: start; }
+  .sidebar .sidebar-link.active { box-shadow: inset 0 -3px 0 var(--brand); }
+  .sidebar .sidebar-primary { margin: 0; }
+
+  .main-content { padding: 1rem 0.75rem 2rem; }
+  .panel + .panel { margin-top: 1rem; }
+  h1 { margin-bottom: 1rem; }
+
+  /* ფორმები სრულ სიგანეზე */
+  .data-form { max-width: none; }
+  .button { min-height: 2.9rem; }
+  .data-form .button, .inline-form .button { width: 100%; }
+  .filter-actions .button, .sales-filter-actions .button { flex: 1 1 auto; }
+  .return-search input { min-width: 0; width: 100%; }
+
+  /* ცხრილები უფრო კომპაქტური */
+  table { font-size: 0.88rem; }
+  th, td { padding: 0.55rem 0.6rem; }
+  .products-table .cell-input { width: 5.5rem; }
+  td.wrap { min-width: 11rem; }
+
+  .hero { padding: 1.25rem; }
+  .register-grid { grid-template-columns: minmax(0, 1fr); }
+  .register-card { padding: 1.1rem; }
+}
+
+/* სენსორული ეკრანი: ადვილად დასაჭერი ელემენტები, iOS-ზე ველზე დაჭერისას გადიდება აღარ ხდება */
+@media (pointer: coarse) {
+  input, select, textarea { font-size: max(16px, 1rem); }
+  .data-form input, .data-form select, .inline-form input, .inline-form select,
+  .sale-terminal input, .sale-terminal select { min-height: 2.9rem; }
+  .products-table .cell-input, .products-table .cell-select { min-height: 2.6rem; font-size: max(16px, 1rem); }
+  label.check input { width: 1.4rem; height: 1.4rem; }
+}
+
+/* პატარა ტელეფონი */
+@media (max-width: 420px) {
+  .account-details span { display: none; }
+  .stat strong { font-size: 1.15rem; }
+  .atile-value, .atile-brand .atile-value { font-size: 1.3rem; }
+  .sale-summary p:first-child strong, .return-summary .return-refund strong { font-size: 1.25rem; }
+  .login-card { padding: 1.25rem; }
+}
+
+/* დაბალი ეკრანი (ტელეფონი ჰორიზონტალურად): ზედა პანელი აღარ ეკვრის */
+@media (max-height: 520px) {
+  .app-header, .sidebar { position: static; }
+}
