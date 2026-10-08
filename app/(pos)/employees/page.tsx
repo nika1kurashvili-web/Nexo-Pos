@@ -45,7 +45,7 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
   return <>
     <h1>თანამშრომლები</h1>
     {params.error && <p className="notice error" role="alert">{errors[params.error] ?? errors.failed}</p>}
-    {params.deleted && <p className="notice success" role="status">თანამშრომლის POS წვდომა წაიშალა.</p>}
+    {params.deleted && <p className="notice success" role="status">{params.deleted === "archived" ? "თანამშრომელი წაიშალა სიიდან და ვეღარ შევა სისტემაში. მისი გაყიდვებისა და სალაროს ისტორია შენახულია." : "თანამშრომლის POS წვდომა წაიშალა."}</p>}
     {params.saved && <p className="notice success" role="status">ცვლილება შენახულია.</p>}
     {failed ? <p className="notice error" role="alert">თანამშრომლების მართვა მიუწვდომელია. გადაამოწმეთ კავშირი და თანამშრომლების მართვის migration. ცვლილებები არ გაგზავნოთ.</p> : <>
       <section className="panel">
@@ -88,9 +88,9 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
                 </EmployeeForm>
               </details>
               <details><summary className="text-bad">თანამშრომლის წაშლა</summary>
-                {cannotDelete ? <p>წაშლა შეუძლებელია საკუთარი ანგარიშის, ბოლო admin-ის ან ღია სალაროს მქონე თანამშრომლისთვის.</p> : <EmployeeForm action={deleteEmployee} confirmation={`წავშალოთ „${e.full_name}“ POS სისტემიდან? თუ აქვს გაყიდვების ან სალაროს ისტორია, წაშლა არ შესრულდება და გათიშვა დაგჭირდებათ.`}>
+                {cannotDelete ? <p>წაშლა შეუძლებელია საკუთარი ანგარიშის, ბოლო admin-ის ან ღია სალაროს მქონე თანამშრომლისთვის.</p> : <EmployeeForm action={deleteEmployee} confirmation={`წავშალოთ „${e.full_name}“ POS სისტემიდან? მისი გაყიდვებისა და სალაროს ისტორია შენარჩუნდება.`}>
                   <input type="hidden" name="id" value={e.id}/>
-                  <p>წაიშლება მხოლოდ POS წვდომა. ანგარიში და Orders-ში შესვლა უცვლელი დარჩება. ისტორიის მქონე თანამშრომლის წაშლა შეუძლებელია — გამოიყენეთ „გათიშვა“.</p>
+                  <p>თანამშრომელი ქრება სიიდან და POS-ში შესვლა ეკრძალება. გაყიდვების, სალაროსა და რეპორტების ისტორია სახელით შენარჩუნდება. Orders-ში შესვლა უცვლელი რჩება.</p>
                   <label className="check"><input type="checkbox" name="confirm_delete" value="yes" required/>ვადასტურებ, რომ ეს თანამშრომელი უნდა წაიშალოს.</label>
                   <SubmitButton pendingText="იშლება…" className="button secondary">თანამშრომლის წაშლა</SubmitButton>
                 </EmployeeForm>}

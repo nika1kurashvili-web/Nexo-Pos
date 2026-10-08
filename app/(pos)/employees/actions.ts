@@ -91,5 +91,5 @@ export async function deleteEmployee(form: FormData) {
   const removed = await client.rpc("pos_employee_delete", { p_user: id });
   if (removed.error) fail(removed.error);
   revalidatePath("/", "layout");
-  redirect("/employees?deleted=1");
+  redirect(removed.data === "archived" ? "/employees?deleted=archived" : "/employees?deleted=1");
 }

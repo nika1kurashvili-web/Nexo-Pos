@@ -123,7 +123,7 @@ export type PosFunctions = {
   pos_record_cash_withdrawal: { Args: { p_request: string; p_session: string; p_amount: string; p_reason: string }; Returns: string };
   pos_employee_list: { Args: Record<string, never>; Returns: PosEmployee[] };
   pos_employee_lookup: { Args: { p_email: string }; Returns: { id: string; has_pos: boolean } | null };
-  pos_employee_delete: { Args: { p_user: string }; Returns: void };
+  pos_employee_delete: { Args: { p_user: string }; Returns: string };
   pos_employee_save: { Args: { p_user: string; p_name: string; p_role: string; p_active: boolean }; Returns: string };
   pos_employee_password_request: { Args: { p_user: string; p_shared_confirm: boolean }; Returns: string };
   pos_employee_password_result: { Args: { p_request: string; p_success: boolean }; Returns: boolean };
