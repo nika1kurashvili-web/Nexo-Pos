@@ -13,6 +13,7 @@ import {
   saveCustomer,
   saveCustomerPrice,
 } from "../../actions";
+import CustomerOrders from "./customer-orders";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,8 @@ export default async function CustomerPage({
     saved?: string;
     imported?: string;
     skipped?: string;
+    order_error?: string;
+    order_saved?: string;
   }>;
 }) {
   const profile = await requireAdmin();
@@ -210,6 +213,13 @@ export default async function CustomerPage({
   }
 
   const todayTbilisi = tbilisiDate(new Date());
+  const query = await searchParams;
+
+  const orderPrices: Record<string, string> = {};
+  for (const price of prices) {
+    const key = price.variant_id !== null ? `variant:${price.variant_id}` : `product:${price.product_id}`;
+    orderPrices[key] = String(Number(price.price));
+  }
 
   const debtSales = debtCandidates
     .map((sale) => ({
@@ -233,7 +243,10 @@ export default async function CustomerPage({
       <h1>{customer.name}</h1>
 
       <Notice
-        {...(await searchParams)}
+        error={query.error}
+        saved={query.saved}
+        imported={query.imported}
+        skipped={query.skipped}
         loadError={loadError}
       />
 
@@ -248,6 +261,14 @@ export default async function CustomerPage({
           <SaveButton />
         </form>
       </section>
+
+      <CustomerOrders
+        customerId={id}
+        customerPrices={orderPrices}
+        today={todayTbilisi}
+        orderError={query.order_error}
+        orderSaved={query.order_saved}
+      />
 
       <section className="panel">
         <h2>

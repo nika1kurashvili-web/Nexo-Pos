@@ -54,9 +54,15 @@ export type PosStockMovement = { id: string; kind: "sale" | "return" | "purchase
 export type InventoryCatalogItem = { kind: "product" | "variant"; id: string; name: string; sku: string | null; price: Decimal | null; stock: Decimal; cost: Decimal | null };
 export type ProductCategory = "მანქანა" | "ტექნიკა";
 export type ProductOverviewItem = { kind: "product" | "variant"; id: string; product_id: string; category: ProductCategory | null; name: string; variant_name: string | null; sku: string | null; price: Decimal | null; stock: Decimal; cost: Decimal | null; active: boolean };
+export type CustomerOrder = { id: string; order_number: number; request_id: string; customer_id: string; order_date: string; note: string | null; total: Decimal; actor_id: string; created_at: string };
+export type CustomerOrderItem = { id: string; order_id: string; line_no: number; product_id: string | null; variant_id: string | null; name: string; sku: string | null; quantity: Decimal; unit_price: Decimal; line_total: Decimal };
+export type CustomerOrderPayment = { id: string; request_id: string; order_id: string; amount: Decimal; paid_on: string; actor_id: string; created_at: string };
 type Table<Row> = { Row: Row; Insert: Partial<Row>; Update: Partial<Row>; Relationships: [] };
 export type PosTables = {
   pos_cash_withdrawals: Table<CashWithdrawal>;
+  pos_customer_orders: Table<CustomerOrder>;
+  pos_customer_order_items: Table<CustomerOrderItem>;
+  pos_customer_order_payments: Table<CustomerOrderPayment>;
   pos_purchases: Table<PosPurchase>;
   pos_purchase_items: Table<PosPurchaseItem>;
   pos_inventories: Table<PosInventory>;
@@ -106,6 +112,10 @@ export type AnalyticsProductRow = {
   profit: number | string | null;
 };
 export type PosFunctions = {
+  pos_create_customer_order: { Args: { p_request: string; p_customer: string; p_date: string; p_note: string | null; p_items: Json }; Returns: string };
+  pos_record_customer_order_payment: { Args: { p_request: string; p_order: string; p_amount: string; p_paid_on: string }; Returns: string };
+  pos_delete_customer_order_payment: { Args: { p_payment: string }; Returns: undefined };
+  pos_delete_customer_order: { Args: { p_order: string }; Returns: undefined };
   pos_products_overview: { Args: Record<string, never>; Returns: ProductOverviewItem[] };
   pos_create_product: { Args: { p_name: string; p_sku: string | null; p_price: string; p_cost: string | null; p_weight: string }; Returns: string };
   pos_catalog_items_used: { Args: { p_ids: Json }; Returns: Json };
