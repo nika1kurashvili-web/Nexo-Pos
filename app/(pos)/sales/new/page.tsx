@@ -59,7 +59,6 @@ export default async function NewSalePage({
     measureSaleQuery("variants", fetchAll<VariantRow>((from, to) => client
       .from("product_variants" as never)
       .select("id,product_id,name,sku,price,active")
-      .eq("active", true)
       .order("name")
       .order("id")
       .range(from, to))),
@@ -134,6 +133,7 @@ export default async function NewSalePage({
     products.map((product) => [product.id, product])
   );
 
+  // პროდუქტი, რომელსაც ვარიანტი აქვს (გაუქმებულიც), მხოლოდ სახელია და ცალკე არ იყიდება.
   const productsWithVariants = new Set(
     variants.map((variant) => variant.product_id)
   );
@@ -156,6 +156,7 @@ export default async function NewSalePage({
 
     ...variants
       .filter((variant) =>
+        variant.active === true &&
         productById.has(variant.product_id)
       )
       .map((variant) => {
