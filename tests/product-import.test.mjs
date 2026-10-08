@@ -70,6 +70,7 @@ test('unchanged negative stock and long-decimal cost are not errors', () => {
 test('items missing from the file are proposed for removal, never auto-applied', () => {
   const plan = buildImportPlan([H, [A, 'რძე', '', '111', '', '', '', '']], current);
   assert.deepEqual(plan.removals.map((r) => r.id).sort(), [B, C].sort());
+  assert.equal(plan.removals.find((r) => r.id === C).active, false);
   assert.equal(plan.changes.length, 0);
   const empty = buildImportPlan([H], current);
   assert.equal(empty.removals.length, 0); // ცარიელი ფაილი ყველაფრის წაშლას არ სთავაზობს

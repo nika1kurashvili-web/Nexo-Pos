@@ -49,6 +49,8 @@ export async function POST(request: Request) {
     const { data: used } = await client.rpc("pos_catalog_items_used", { p_ids: plan.removals.map((r) => r.id) });
     const usedIds = new Set(Array.isArray(used) ? (used as string[]).map((id) => String(id).toLowerCase()) : []);
     for (const removal of plan.removals) removal.used = usedIds.has(removal.id.toLowerCase());
+    // გაუქმებული პროდუქტი, რომელსაც ისტორია აქვს, უკვე „მოცილებულია“: მას ყოველ ჯერზე აღარ ვაჩვენებთ.
+    plan.removals = plan.removals.filter((removal) => removal.active || !removal.used);
   }
   return Response.json(plan);
 }

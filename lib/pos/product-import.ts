@@ -25,7 +25,7 @@ export type ProductChange = {
   was: Partial<Record<keyof ProductFields, string>>;
 };
 
-export type ProductRemoval = { id: string; kind: "product" | "variant"; label: string; sku: string | null; stock: string; used?: boolean };
+export type ProductRemoval = { id: string; kind: "product" | "variant"; label: string; sku: string | null; stock: string; active: boolean; used?: boolean };
 
 export type ImportPlan = {
   changes: ProductChange[];
@@ -216,7 +216,7 @@ export function buildImportPlan(table: unknown[][], current: ProductOverviewItem
     for (const item of current) {
       if (seen.has(item.id.toLowerCase())) continue;
       plan.removals.push({
-        id: item.id, kind: item.kind, sku: item.sku, stock: String(Number(item.stock)),
+        id: item.id, kind: item.kind, sku: item.sku, stock: String(Number(item.stock)), active: item.active,
         label: item.variant_name ? `${item.name} / ${item.variant_name}` : item.name,
       });
     }
