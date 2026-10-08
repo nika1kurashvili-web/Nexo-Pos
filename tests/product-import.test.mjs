@@ -8,7 +8,7 @@ const current = [
   { kind: 'variant', id: B, name: 'ჩანთა', variant_name: 'წითელი', sku: '222', price: '10', stock: '0', cost: null, active: true },
   { kind: 'product', id: C, name: 'ძველი', variant_name: null, sku: null, price: '1', stock: '0', cost: null, active: false },
 ];
-const H = PRODUCT_SHEET_HEADER;
+const H = PRODUCT_SHEET_HEADER.filter((h) => h !== 'კატეგორია');
 
 test('no changes -> unchanged only', () => {
   const plan = buildImportPlan([H, [A, 'რძე', '', 111, 1.2, 2, 5, 'დიახ'], [B, 'ჩანთა', 'წითელი', '222', '', 10, 0, 'დიახ']], current);
@@ -73,4 +73,22 @@ test('items missing from the file are proposed for removal, never auto-applied',
   assert.equal(plan.changes.length, 0);
   const empty = buildImportPlan([H], current);
   assert.equal(empty.removals.length, 0); // ცარიელი ფაილი ყველაფრის წაშლას არ სთავაზობს
+});
+
+test('category column: set, validate, per-product consistency', () => {
+  const H2 = [...H.slice(0, 3), 'კატეგორია', ...H.slice(3)];
+  const cur = [
+    { kind: 'variant', id: A, product_id: C, name: 'ჩანთა', variant_name: 'a', sku: '1', price: '1', stock: '0', cost: null, active: true, category: null },
+    { kind: 'variant', id: B, product_id: C, name: 'ჩანთა', variant_name: 'b', sku: '2', price: '1', stock: '0', cost: null, active: true, category: null },
+  ];
+  const ok = buildImportPlan([H2, [A, 'ჩანთა', 'a', 'მანქანა', '1', '', '', '', ''], [B, 'ჩანთა', 'b', 'მანქანა', '2', '', '', '', '']], cur);
+  assert.equal(ok.errors.length, 0); assert.equal(ok.changes.length, 2); assert.equal(ok.changes[0].set.category, 'მანქანა');
+  const conflict = buildImportPlan([H2, [A, 'ჩანთა', 'a', 'მანქანა', '1', '', '', '', ''], [B, 'ჩანთა', 'b', 'ტექნიკა', '2', '', '', '', '']], cur);
+  assert.equal(conflict.errors.length, 1);
+  const bad = buildImportPlan([H2, [A, 'ჩანთა', 'a', 'სხვა', '1', '', '', '', '']], cur);
+  assert.equal(bad.errors.length, 1);
+  const created = buildImportPlan([H2, ['', 'ახალი', '', 'ტექნიკა', 'N', '', 5, '', '']], cur);
+  assert.equal(created.changes[0].set.category, 'ტექნიკა');
+  const same = buildImportPlan([H2, [A, 'ჩანთა', 'a', '', '1', '', '', '', '']], cur);
+  assert.equal(same.changes.length, 0);
 });

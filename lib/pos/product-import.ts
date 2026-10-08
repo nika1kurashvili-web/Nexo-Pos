@@ -1,12 +1,13 @@
 import type { ProductOverviewItem } from "./types";
 
 export const PRODUCT_SHEET_HEADER = [
-  "ID (არ შეცვალოთ)", "პროდუქტი", "ვარიანტი", "ბარკოდი", "შესყიდვის ფასი", "გასაყიდი ფასი", "მარაგი", "აქტიური",
+  "ID (არ შეცვალოთ)", "პროდუქტი", "ვარიანტი", "კატეგორია", "ბარკოდი", "შესყიდვის ფასი", "გასაყიდი ფასი", "მარაგი", "აქტიური",
 ];
 
 export type ProductFields = {
   name?: string;
   variant_name?: string;
+  category?: string;
   sku?: string;
   price?: string;
   cost?: string;
@@ -37,6 +38,7 @@ export type ImportPlan = {
 const normalizeDecimal = (value: string) => value.trim().replace(",", ".");
 const isCount = (value: string) => /^\d{1,11}([.,]\d{1,3})?$/.test(value.trim());
 const isPrice = (value: string) => /^\d{1,12}([.,]\d{1,2})?$/.test(value.trim());
+export const CATEGORIES = ["მანქანა", "ტექნიკა"] as const;
 const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const text = (value: unknown) => (typeof value === "number" ? String(value) : String(value ?? "").trim());
 const cents = (value: string | number | null | undefined) => Math.round(Number(value ?? 0) * 100);
@@ -63,6 +65,7 @@ export function buildImportPlan(table: unknown[][], current: ProductOverviewItem
     id: findCol(header, (h) => h.startsWith("id")),
     name: findCol(header, (h) => h === "პროდუქტი" || h === "სახელი"),
     variant: findCol(header, (h) => h === "ვარიანტი"),
+    category: findCol(header, (h) => h === "კატეგორია"),
     sku: findCol(header, (h) => h === "ბარკოდი" || h === "sku"),
     cost: findCol(header, (h) => h.startsWith("შესყიდვ")),
     price: findCol(header, (h) => h.startsWith("გასაყიდ")),
@@ -78,6 +81,7 @@ export function buildImportPlan(table: unknown[][], current: ProductOverviewItem
   const seen = new Set<string>();
   const finalSku = new Map<string, string>(); // item key -> lowercase sku
   for (const item of current) finalSku.set(item.id.toLowerCase(), norm(item.sku ?? ""));
+  const wantedCategory = new Map<string, { value: string; row: number }>();
   const touchedSku: { row: number; key: string; sku: string }[] = [];
 
   table.slice(1).forEach((line, index) => {
@@ -118,6 +122,17 @@ export function buildImportPlan(table: unknown[][], current: ProductOverviewItem
           set.sku = sku; was.sku = item.sku ?? "";
           finalSku.set(id, norm(sku));
           if (sku) touchedSku.push({ row, key: id, sku: norm(sku) });
+        }
+      }
+      if (col.category >= 0) {
+        const category = get(col.category);
+        if (category) {
+          if (!(CATEGORIES as readonly string[]).includes(category)) return error("კატეგორია უნდა იყოს „მანქანა“ ან „ტექნიკა“.");
+          const parent = item.product_id ?? item.id;
+          const earlier = wantedCategory.get(parent);
+          if (earlier && earlier.value !== category) return error(`ერთი პროდუქტის ვარიანტებს სხვადასხვა კატეგორია აქვს (სტრიქონი ${earlier.row}). კატეგორია პროდუქტზეა, ყველა ვარიანტს ერთი უნდა ჰქონდეს.`);
+          wantedCategory.set(parent, { value: category, row });
+          if (category !== (item.category ?? "")) { set.category = category; was.category = item.category ?? ""; }
         }
       }
       const priceRaw = normalizeDecimal(get(col.price));
@@ -162,7 +177,13 @@ export function buildImportPlan(table: unknown[][], current: ProductOverviewItem
     const activeRaw = get(col.active);
     if (activeRaw && parseActive(activeRaw) !== true) return error("ახალი პროდუქტი აქტიური უნდა იყოს.");
 
+    let newCategory = "";
+    if (col.category >= 0) {
+      newCategory = get(col.category);
+      if (newCategory && !(CATEGORIES as readonly string[]).includes(newCategory)) return error("კატეგორია უნდა იყოს „მანქანა“ ან „ტექნიკა“.");
+    }
     const set: ProductFields = { name, price: priceRaw };
+    if (newCategory) set.category = newCategory;
     if (sku) set.sku = sku;
     if (costRaw) set.cost = costRaw;
     if (cents(stockRaw) > 0 || thousandths(stockRaw) > 0) set.stock = stockRaw;

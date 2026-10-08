@@ -5,7 +5,7 @@ import { importProducts } from "@/app/(pos)/products/actions";
 import type { ImportPlan, ProductChange } from "@/lib/pos/product-import";
 
 const labels: Record<string, string> = {
-  name: "სახელი", variant_name: "ვარიანტი", sku: "ბარკოდი", price: "გასაყიდი ფასი",
+  name: "სახელი", variant_name: "ვარიანტი", category: "კატეგორია", sku: "ბარკოდი", price: "გასაყიდი ფასი",
   cost: "შესყიდვის ფასი", stock: "მარაგი", active: "სტატუსი",
 };
 

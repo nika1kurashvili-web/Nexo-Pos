@@ -15,10 +15,12 @@ const errorCodes: Record<string, string> = {
   INVALID_PRICE: "price",
   INVALID_COST: "cost",
   INVALID_WEIGHT: "weight",
+  INVALID_CATEGORY: "category",
   SKU_TAKEN: "sku_taken",
   CATALOG_ITEM_UNAVAILABLE: "unavailable",
 };
 
+const categories = ["მანქანა", "ტექნიკა"];
 const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
 
 function back(form: FormData, extra: string) {
@@ -27,6 +29,8 @@ function back(form: FormData, extra: string) {
   const params = new URLSearchParams();
   if (q) params.set("q", q.slice(0, 100));
   if (all) params.set("all", "1");
+  const cat = text(form, "cat");
+  if (cat) params.set("cat", cat.slice(0, 20));
   const base = params.toString();
   return `/products?${base ? `${base}&` : ""}${extra}`;
 }
@@ -58,6 +62,9 @@ export async function saveProduct(form: FormData) {
   const origCost = normalizeDecimal(text(form, "orig_cost"));
   const stock = normalizeDecimal(text(form, "stock"));
   const origStock = normalizeDecimal(text(form, "orig_stock"));
+  const category = text(form, "category");
+  const origCategory = text(form, "orig_category");
+  if (category && !categories.includes(category)) redirect(back(form, "error=category"));
   if ((kind !== "product" && kind !== "variant") || !uuidRe.test(id) || !uuidRe.test(requestId)) {
     redirect(back(form, "error=invalid"));
   }
@@ -66,6 +73,13 @@ export async function saveProduct(form: FormData) {
   if (cost !== origCost && !isPrice(cost)) redirect(back(form, "error=cost"));
 
   const client = await rpcClient();
+  if (category !== origCategory) {
+    const { error } = await client.rpc("pos_set_category", { p_kind: kind, p_id: id, p_category: category || null });
+    if (error) {
+      console.error("[nexo-pos-products] category", safeAuthError(error));
+      redirect(back(form, `error=${errorCodes[error.message?.trim() ?? ""] ?? "failed"}`));
+    }
+  }
   if (cost !== origCost && Number(cost) !== Number(origCost || "0")) {
     const { error } = await client.rpc("pos_set_cost", { p_kind: kind, p_id: id, p_cost: cost });
     if (error) {
@@ -110,6 +124,8 @@ export async function createProduct(form: FormData) {
   const weight = normalizeDecimal(text(form, "weight")) || "1";
   const stock = normalizeDecimal(text(form, "stock")) || "0";
   const requestId = text(form, "request_id");
+  const category = text(form, "category");
+  if (category && !categories.includes(category)) redirect(back(form, "error=category"));
   if (!name || name.length > 200) redirect(back(form, "error=name"));
   if (!isPrice(price)) redirect(back(form, "error=price"));
   if (cost && !isPrice(cost)) redirect(back(form, "error=cost"));
@@ -124,6 +140,10 @@ export async function createProduct(form: FormData) {
     console.error("[nexo-pos-products] create", safeAuthError(error));
     redirect(back(form, `error=${errorCodes[error?.message?.trim() ?? ""] ?? "failed"}`));
   }
+  if (category) {
+    const { error: categoryError } = await client.rpc("pos_set_category", { p_kind: "product", p_id: data as string, p_category: category });
+    if (categoryError) console.error("[nexo-pos-products] category", safeAuthError(categoryError));
+  }
   if (Number(stock) > 0) await setStock(form, "product", data as string, stock, requestId);
   revalidatePath("/products");
   redirect(back(form, "created=1"));
@@ -135,11 +155,12 @@ const importErrors: Record<string, string> = {
   INVALID_NAME: "import_name",
   INVALID_PRICE: "import_price",
   INVALID_COST: "import_cost",
+  INVALID_CATEGORY: "import_category",
   INVALID_SKU: "import_sku",
   CATALOG_ITEM_UNAVAILABLE: "import_unavailable",
 };
 
-const importFields = ["name", "variant_name", "sku", "price", "cost", "stock"] as const;
+const importFields = ["name", "variant_name", "category", "sku", "price", "cost", "stock"] as const;
 
 export async function importProducts(form: FormData) {
   await requireAdmin();
