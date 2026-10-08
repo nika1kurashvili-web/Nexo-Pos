@@ -1165,3 +1165,4 @@ td.wrap { min-width: 14rem; max-width: 28rem; overflow-wrap: anywhere; }
 .products-table .row-inactive td { opacity: 0.55; }
 .products-table .row-actions { white-space: nowrap; }
 .products-table .row-actions form { display: inline; }
+.text-bad { color: #b42323; }

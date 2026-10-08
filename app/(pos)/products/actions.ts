@@ -128,3 +128,52 @@ export async function createProduct(form: FormData) {
   revalidatePath("/products");
   redirect(back(form, "created=1"));
 }
+
+const importErrors: Record<string, string> = {
+  IMPORT_ALREADY_DONE: "done",
+  SKU_TAKEN: "import_sku",
+  INVALID_NAME: "import_name",
+  INVALID_PRICE: "import_price",
+  INVALID_COST: "import_cost",
+  INVALID_SKU: "import_sku",
+  CATALOG_ITEM_UNAVAILABLE: "import_unavailable",
+};
+
+const importFields = ["name", "variant_name", "sku", "price", "cost", "stock"] as const;
+
+export async function importProducts(form: FormData) {
+  await requireAdmin();
+  const requestId = text(form, "request_id");
+  if (!uuidRe.test(requestId)) redirect("/products/import?error=invalid");
+  let raw: unknown;
+  try {
+    raw = JSON.parse(String(form.get("changes") ?? ""));
+  } catch {
+    redirect("/products/import?error=invalid");
+  }
+  if (!Array.isArray(raw) || raw.length === 0 || raw.length > 2000) redirect("/products/import?error=invalid");
+
+  const items: Record<string, unknown>[] = [];
+  for (const entry of raw as { row?: unknown; op?: unknown; id?: unknown; set?: Record<string, unknown> }[]) {
+    const set = entry.set ?? {};
+    if ((entry.op !== "update" && entry.op !== "create") || typeof entry.row !== "number") redirect("/products/import?error=invalid");
+    if (entry.op === "update" && (typeof entry.id !== "string" || !uuidRe.test(entry.id))) redirect("/products/import?error=invalid");
+    const item: Record<string, unknown> = { row: entry.row, op: entry.op };
+    if (entry.op === "update") item.id = entry.id;
+    for (const key of importFields) if (typeof set[key] === "string") item[key] = set[key];
+    if (typeof set.active === "boolean") item.active = set.active;
+    items.push(item);
+  }
+
+  const client = await rpcClient();
+  const { data, error } = await client.rpc("pos_products_import", { p_request: requestId, p_items: items as never });
+  if (error) {
+    console.error("[nexo-pos-products] import", safeAuthError(error));
+    const known = importErrors[error.message?.trim() ?? ""] ?? "import_failed";
+    const row = /row (\d+)/.exec(error.details ?? "")?.[1];
+    redirect(`/products/import?error=${known}${row ? `&row=${row}` : ""}`);
+  }
+  const result = data as { created?: number; updated?: number } | null;
+  revalidatePath("/products");
+  redirect(`/products?imported=1&created=${result?.created ?? 0}&updated=${result?.updated ?? 0}`);
+}

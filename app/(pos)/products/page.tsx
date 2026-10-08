@@ -5,7 +5,7 @@ import { createProduct, saveProduct, toggleProduct } from "./actions";
 
 export const dynamic = "force-dynamic";
 
-type Params = { q?: string; all?: string; saved?: string; created?: string; deactivated?: string; restored?: string; error?: string };
+type Params = { updated?: string; imported?: string; q?: string; all?: string; saved?: string; created?: string; deactivated?: string; restored?: string; error?: string };
 
 const errors: Record<string, string> = {
   invalid: "შეამოწმეთ შეყვანილი მონაცემები.",
@@ -42,11 +42,18 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
 
   const active = items.filter((item) => item.active);
   const stockValue = active.reduce((sum, item) => sum + Math.max(0, Number(item.stock)) * Number(item.cost ?? 0), 0);
-  const notice = params.saved ? "ცვლილება შენახულია." : params.created ? "პროდუქტი დაემატა." :
+  const notice = params.imported ? `Excel-ით განახლდა: ${Number(params.updated) || 0}, დაემატა: ${Number(params.created) || 0}.` :
+    params.saved ? "ცვლილება შენახულია." : params.created ? "პროდუქტი დაემატა." :
     params.deactivated ? "პროდუქტი გაუქმებულია (ისტორია შენარჩუნებულია)." : params.restored ? "პროდუქტი აღდგენილია." : null;
 
   return <>
-    <div className="analytics-head"><h1>პროდუქტები</h1></div>
+    <div className="analytics-head">
+      <h1>პროდუქტები</h1>
+      <div>
+        <a href="/products/export" className="button secondary">Excel-ის ჩამოტვირთვა</a>{" "}
+        <Link href="/products/import" className="button secondary">Excel-ის ატვირთვა</Link>
+      </div>
+    </div>
     {error && <p className="notice error" role="alert">პროდუქტების სია ვერ ჩაიტვირთა. გაუშვით მიგრაცია 202610060002 Supabase-ში.</p>}
     {params.error && <p className="notice error" role="alert">{errors[params.error] ?? errors.failed}</p>}
     {notice && <p className="notice success" role="status">{notice}</p>}
