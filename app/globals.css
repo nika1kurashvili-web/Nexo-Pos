@@ -1347,3 +1347,17 @@ h1, h2, h3 { overflow-wrap: anywhere; }
 .badge-return-full { background: #fde6e6; color: #b42323; }
 .return-badges { display: inline-flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
 h1 .badge { font-size: 0.85rem; vertical-align: middle; margin-left: 0.4rem; }
+
+/* collapsible panels (e.g. customer price list) */
+.fold-panel { padding: 0; overflow: hidden; }
+.fold-panel + .panel, .panel + .fold-panel { margin-top: 1.5rem; }
+.fold-summary { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin: 0; padding: 1.1rem clamp(1rem, 2.2vw, 2rem); cursor: pointer; list-style: none; }
+.fold-summary::-webkit-details-marker { display: none; }
+.fold-summary h2 { margin: 0; display: flex; align-items: center; gap: 0.6rem; }
+.fold-summary h2::before { content: "▸"; color: var(--text-muted); transition: transform 0.15s ease; }
+.fold-panel[open] > .fold-summary h2::before { transform: rotate(90deg); }
+.fold-summary:hover { background: #f8faff; }
+.fold-panel[open] > .fold-summary { border-bottom: 1px solid var(--border); background: var(--surface-soft); }
+.fold-body { padding: 1rem clamp(1rem, 2.2vw, 2rem) clamp(1rem, 2.2vw, 2rem); }
+.badge-fold { background: var(--brand-soft); color: var(--brand-dark); white-space: nowrap; }
+.fold-body details { margin-top: 0.75rem; }

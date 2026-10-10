@@ -256,10 +256,13 @@ export default async function CustomerPage({
         </form>
       </section>
 
-      <section className="panel">
-        <h2>
-          ინდივიდუალური საბითუმო ფასები
-        </h2>
+      <details className="panel fold-panel">
+        <summary className="fold-summary">
+          <h2>ინდივიდუალური საბითუმო ფასები</h2>
+          <span className="badge badge-fold">{priceRows.length} ფასი</span>
+        </summary>
+
+        <div className="fold-body">
 
         <p>
           ფასის არქონისას საცალო ფასი
@@ -386,7 +389,8 @@ export default async function CustomerPage({
     </SaveButton>
   </form>
 </details>
-      </section>
+        </div>
+      </details>
 
       <section className="panel">
         <h2>დავალიანება</h2>
