@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth/server";
 import { money, posClient } from "@/lib/pos/server";
+import { loadImageMap } from "@/lib/pos/product-images-load";
+import ProductImageCell from "@/app/components/product-image-cell";
 import { createProduct, saveProduct, toggleProduct } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -33,7 +35,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
   const all = params.all === "1";
   const cat = params.cat === "მანქანა" || params.cat === "ტექნიკა" || params.cat === "none" ? params.cat : "";
 
-  const { data, error } = await client.rpc("pos_products_overview");
+  const [{ data, error }, images] = await Promise.all([client.rpc("pos_products_overview"), loadImageMap(client)]);
   if (error) console.error("[products] overview failed:", error.code, error.message);
   const items = data ?? [];
   const needle = q.toLowerCase();
@@ -58,6 +60,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
       <h1>პროდუქტები</h1>
       <div>
         <a href="/products/export" className="button secondary">Excel-ის ჩამოტვირთვა</a>{" "}
+        <Link href="/products/images" className="button secondary">ფოტოები</Link>{" "}
         <Link href="/products/import" className="button secondary">Excel-ის ატვირთვა</Link>
       </div>
     </div>
@@ -100,7 +103,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
         <div className="table-scroll">
           <table className="products-table">
             <thead><tr>
-              <th scope="col">პროდუქტი</th><th scope="col">კატეგორია</th><th scope="col">კოდი</th><th scope="col">მარაგი</th>
+              <th scope="col">ფოტო</th><th scope="col">პროდუქტი</th><th scope="col">კატეგორია</th><th scope="col">კოდი</th><th scope="col">მარაგი</th>
               <th scope="col">შესყიდვის ფასი</th><th scope="col">გასაყიდი ფასი</th><th scope="col">მოგება</th>
               <th scope="col">სტატუსი</th><th scope="col">მოქმედება</th>
             </tr></thead>
@@ -109,6 +112,11 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
               const stock = Number(item.stock);
               const margin = item.cost !== null && item.price !== null ? Number(item.price) - Number(item.cost) : null;
               return <tr key={formId} className={item.active ? undefined : "row-inactive"}>
+                <td>{(() => {
+                  const own = images.map.get(`${item.kind}:${item.id}`) ?? null;
+                  const parent = item.kind === "variant" ? images.map.get(`product:${item.product_id}`) ?? null : null;
+                  return <ProductImageCell kind={item.kind} id={item.id} url={own ?? parent} inherited={!own && !!parent} />;
+                })()}</td>
                 <td><strong>{item.name}</strong>{item.variant_name && <div className="muted">{item.variant_name}</div>}</td>
                 <td><select form={formId} name="category" defaultValue={item.category ?? ""} aria-label="კატეგორია" className="cell-select"><option value="">—</option>{CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}</select></td>
                 <td>{item.sku ?? "—"}</td>

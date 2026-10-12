@@ -1361,3 +1361,27 @@ h1 .badge { font-size: 0.85rem; vertical-align: middle; margin-left: 0.4rem; }
 .fold-body { padding: 1rem clamp(1rem, 2.2vw, 2rem) clamp(1rem, 2.2vw, 2rem); }
 .badge-fold { background: var(--brand-soft); color: var(--brand-dark); white-space: nowrap; }
 .fold-body details { margin-top: 0.75rem; }
+
+/* პროდუქტის ფოტოები */
+.img-cell { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; min-width: 9rem; }
+.img-thumb { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; border: 1px solid var(--border); background: #fff; flex: none; }
+.img-inherited { opacity: 0.55; }
+.img-empty { display: inline-flex; align-items: center; justify-content: center; color: var(--text-muted); background: var(--surface-soft); font-size: 1.1rem; }
+.img-btn { padding: 0.25rem 0.55rem; min-height: 0; font-size: 0.8rem; }
+.drop-zone { border: 2px dashed var(--border); border-radius: 12px; padding: 1.5rem 1rem; text-align: center; background: var(--surface-soft); margin-bottom: 0.75rem; }
+.drop-zone.drop-active { border-color: var(--brand-dark); background: var(--brand-soft); }
+.image-preview { margin-top: 0.75rem; }
+.image-preview ul { max-height: 16rem; overflow: auto; }
+
+/* ახალი გაყიდვა: პროდუქტები ფოტოიანი ბარათებით */
+.product-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.75rem; margin-top: 0.75rem; }
+.product-tile { display: flex; flex-direction: column; align-items: stretch; gap: 0.3rem; padding: 0.6rem; background: #fff; border: 1px solid var(--border); border-radius: 12px; text-align: center; cursor: pointer; font: inherit; color: inherit; transition: border-color 0.15s ease, box-shadow 0.15s ease; }
+.product-tile:hover, .product-tile:focus-visible { border-color: var(--brand-dark); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08); outline: none; }
+.product-tile:active { transform: scale(0.98); }
+.tile-name { font-weight: 700; font-size: 0.9rem; line-height: 1.25; min-height: 2.25em; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.tile-variant { font-size: 0.8rem; color: var(--text-muted); }
+.tile-photo { display: block; aspect-ratio: 1 / 1; border-radius: 8px; overflow: hidden; background: var(--surface-soft); }
+.tile-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.tile-empty { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; font-size: 2rem; color: var(--text-muted); }
+.tile-price { font-weight: 700; color: var(--brand-dark); }
+.tile-sku { font-size: 0.72rem; color: var(--text-muted); }

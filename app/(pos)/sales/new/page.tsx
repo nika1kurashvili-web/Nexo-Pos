@@ -5,6 +5,8 @@ import { requirePosProfile } from "@/lib/auth/server";
 import { posClient } from "@/lib/pos/server";
 import { tbilisiToday } from "@/lib/pos/analytics";
 import { Notice } from "@/app/components/pos-forms";
+import { loadImageMap } from "@/lib/pos/product-images-load";
+import { thumbUrl } from "@/lib/pos/product-images";
 import SaleTerminal from "@/app/components/sale-terminal";
 
 export const dynamic = "force-dynamic";
@@ -39,6 +41,7 @@ export default async function NewSalePage({
     { data: variantData, error: variantError },
     { data: paymentData, error: paymentError },
     { data: customerData, error: customerError },
+    images,
   ] = await Promise.all([
     measureSaleQuery("session", client
       .from("pos_register_sessions")
@@ -77,6 +80,7 @@ export default async function NewSalePage({
       .order("id")
       .range(from, to))),
 
+    loadImageMap(client).catch(() => ({ map: new Map<string, string>(), ready: false })),
   ]);
 
   const session = sessionData?.[0] ?? null;
@@ -138,6 +142,8 @@ export default async function NewSalePage({
     variants.map((variant) => variant.product_id)
   );
 
+  const pic = (url: string | undefined) => (url ? thumbUrl(url) : null);
+
   const catalog = [
     ...products
       .filter(
@@ -152,6 +158,7 @@ export default async function NewSalePage({
         variantName: null,
         sku: product.sku,
         price: Number(product.price),
+        imageUrl: pic(images.map.get(`product:${product.id}`)),
       })),
 
     ...variants
@@ -172,6 +179,7 @@ export default async function NewSalePage({
           variantName: variant.name,
           sku: variant.sku ?? product.sku,
           price: Number(variant.price),
+          imageUrl: pic(images.map.get(`variant:${variant.id}`) ?? images.map.get(`product:${product.id}`)),
         };
       }),
   ];

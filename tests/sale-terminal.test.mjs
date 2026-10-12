@@ -21,14 +21,14 @@ function terminal() {
   function nodes(node = tree) { if (!node || typeof node !== 'object') return []; if (Array.isArray(node)) return node.flatMap(n => nodes(n ?? null)); return [node, ...nodes(node.props?.children ?? null)]; }
   function render() { cursor=0; tree=exports.default(props); }
   const text = n => typeof n === 'string' ? n : Array.isArray(n) ? n.map(text).join('') : text(n?.props?.children ?? '');
-  return { render, reset() {state=[];render();}, click(label) { const n=nodes().find(n=>n.type==='button' && text(n)===label);assert.ok(n,label);n.props.onClick();render(); }, inputs() {return nodes().filter(n=>n.type==='input' && n.props.type==='number');}, change(n,value) {n.props.onChange({target:{value}});render();}, hidden(name) {return nodes().find(n=>n.props?.name===name).props.value;}, async selectCustomer() {nodes().find(n=>n.type==='select' && n.props.value==='').props.onChange({target:{value:'customer'}});await new Promise(r=>setTimeout(r,0));render();}, submit() {return nodes().find(n=>typeof n.type==='function');} };
+  return { render, reset() {state=[];render();}, addItem() { const n=nodes().find(n=>n.type==='button' && n.props?.className==='product-tile');assert.ok(n,'product tile');n.props.onClick();render(); }, click(label) { const n=nodes().find(n=>n.type==='button' && text(n)===label);assert.ok(n,label);n.props.onClick();render(); }, inputs() {return nodes().filter(n=>n.type==='input' && n.props.type==='number');}, change(n,value) {n.props.onChange({target:{value}});render();}, hidden(name) {return nodes().find(n=>n.props?.name===name).props.value;}, async selectCustomer() {nodes().find(n=>n.type==='select' && n.props.value==='').props.onChange({target:{value:'customer'}});await new Promise(r=>setTimeout(r,0));render();}, submit() {return nodes().find(n=>typeof n.type==='function');} };
 }
 
 test('terminal automatic/manual/split payments, decimal prices, discounts and fresh-sale state', async () => {
  const t=terminal();t.render();assert.equal(t.inputs()[0].props.value,'');
- t.click('დამატება');assert.equal(t.inputs().at(-1).props.value,'120.00');
- t.click('დამატება');assert.equal(t.inputs().at(-1).props.value,'240.00');
- t.change(t.inputs().at(-1),'25.50');t.click('დამატება');assert.equal(t.inputs().at(-1).props.value,'25.50');
+ t.addItem();assert.equal(t.inputs().at(-1).props.value,'120.00');
+ t.addItem();assert.equal(t.inputs().at(-1).props.value,'240.00');
+ t.change(t.inputs().at(-1),'25.50');t.addItem();assert.equal(t.inputs().at(-1).props.value,'25.50');
  t.click('+ გადახდის დამატება');assert.equal(t.inputs().at(-1).props.value,'334.50');
  t.change(t.inputs()[1],'10.50');assert.equal(t.inputs().at(-1).props.value,'6.00');
  t.change(t.inputs()[2],'10');assert.equal(t.inputs().at(-1).props.value,'2.85');
@@ -36,7 +36,7 @@ test('terminal automatic/manual/split payments, decimal prices, discounts and fr
  t.change(t.inputs()[2],'');assert.equal(t.inputs()[2].props.value,'');
  t.change(t.inputs()[1],'');assert.equal(t.inputs()[1].props.value,'');assert.equal(t.inputs().at(-1).props.value,'');assert.equal(t.submit().props.disabled,true);
  t.reset();assert.equal(t.hidden('items'),'[]');assert.equal(t.hidden('payments'),'[]');assert.equal(t.hidden('tracking_code'),'');assert.equal(t.hidden('customer_id'),'');assert.equal(t.submit().props.disabled,true);
- t.click('საბითუმო');await t.selectCustomer();t.click('დამატება');assert.equal(t.inputs().at(-1).props.value,'80.00');
+ t.click('საბითუმო');await t.selectCustomer();t.addItem();assert.equal(t.inputs().at(-1).props.value,'80.00');
  t.change(t.inputs().at(-1),'25');assert.equal(t.submit().props.disabled,false);
  t.change(t.inputs().at(-1),'0');assert.equal(t.hidden('payments'),'[]');assert.equal(t.submit().props.disabled,false);
  let selected=false;t.inputs().at(-1).props.onFocus({currentTarget:{value:'0',select(){selected=true;}}});assert.equal(selected,true);

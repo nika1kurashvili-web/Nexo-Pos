@@ -12,6 +12,7 @@ type CatalogItem = {
   variantName: string | null;
   sku: string | null;
   price: number;
+  imageUrl?: string | null;
 };
 
 type PaymentMethod = {
@@ -629,68 +630,34 @@ export default function SaleTerminal({
               </p>
             )}
 
-            <div className="table-scroll">
-              <table>
-                <thead>
-                  <tr>
-                    <th>პროდუქტი</th>
-                    <th>SKU</th>
-                    <th>ფასი</th>
-                    <th></th>
-                  </tr>
-                </thead>
+            <div className="product-tiles">
+              {results.map((item) => (
+                <button
+                  type="button"
+                  key={`${item.kind}-${item.id}`}
+                  className="product-tile"
+                  onClick={() => addItem(item)}
+                >
+                  <span className="tile-name">{item.name}</span>
+                  {item.variantName && <span className="tile-variant">{item.variantName}</span>}
+                  <span className="tile-photo">
+                    {item.imageUrl
+                      // eslint-disable-next-line @next/next/no-img-element
+                      ? <img src={item.imageUrl} alt="" loading="lazy" width={160} height={160} />
+                      : <span className="tile-empty" aria-hidden="true">📷</span>}
+                  </span>
+                  <span className="tile-price">{item.price.toFixed(2)} ₾</span>
+                  {item.sku && <span className="tile-sku">{item.sku}</span>}
+                </button>
+              ))}
 
-                <tbody>
-                  {results.map((item) => (
-                    <tr
-                      key={`${item.kind}-${item.id}`}
-                    >
-                      <td>
-                        <strong>
-                          {item.name}
-                        </strong>
-
-                        {item.variantName && (
-                          <div>
-                            {item.variantName}
-                          </div>
-                        )}
-                      </td>
-
-                      <td>
-                        {item.sku ?? "—"}
-                      </td>
-
-                      <td>
-                        {item.price.toFixed(2)} ₾
-                      </td>
-
-                      <td>
-                        <button
-                          type="button"
-                          className="button secondary"
-                          onClick={() =>
-                            addItem(item)
-                          }
-                        >
-                          დამატება
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-
-                  {!results.length && (
-                    <tr>
-                      <td colSpan={4}>
-                        {saleType ===
-                        "wholesale"
-                          ? "ამ კლიენტისთვის შესაბამისი საბითუმო ფასი ვერ მოიძებნა."
-                          : "პროდუქტი ვერ მოიძებნა."}
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+              {!results.length && (
+                <p className="muted">
+                  {saleType === "wholesale"
+                    ? "ამ კლიენტისთვის შესაბამისი საბითუმო ფასი ვერ მოიძებნა."
+                    : "პროდუქტი ვერ მოიძებნა."}
+                </p>
+              )}
             </div>
           </>
         )}
