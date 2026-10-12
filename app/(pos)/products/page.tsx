@@ -115,7 +115,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                 <td>{(() => {
                   const own = images.map.get(`${item.kind}:${item.id}`) ?? null;
                   const parent = item.kind === "variant" ? images.map.get(`product:${item.product_id}`) ?? null : null;
-                  return <ProductImageCell kind={item.kind} id={item.id} url={own ?? parent} inherited={!own && !!parent} />;
+                  return <ProductImageCell kind={item.kind} id={item.id} url={own ?? parent} inherited={!own && !!parent} extras={images.extras.get(`${item.kind}:${item.id}`) ?? []} />;
                 })()}</td>
                 <td><strong>{item.name}</strong>{item.variant_name && <div className="muted">{item.variant_name}</div>}</td>
                 <td><select form={formId} name="category" defaultValue={item.category ?? ""} aria-label="კატეგორია" className="cell-select"><option value="">—</option>{CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}</select></td>

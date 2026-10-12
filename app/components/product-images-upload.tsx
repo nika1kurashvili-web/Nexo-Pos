@@ -7,7 +7,7 @@ import { uploadImages, type UploadOutcome } from "@/lib/pos/image-upload";
 
 const isImage = (f: File) => /\.(jpe?g|png|webp|heic|heif|gif|bmp)$/i.test(f.name) || f.type.startsWith("image/");
 
-export default function ProductImagesUpload({ targets }: { targets: ImageTarget[] }) {
+export default function ProductImagesUpload({ targets, extras }: { targets: ImageTarget[]; extras: Record<string, string[]> }) {
   const router = useRouter();
   const [files, setFiles] = useState<File[]>([]);
   const [replace, setReplace] = useState(false);
@@ -32,7 +32,7 @@ export default function ProductImagesUpload({ targets }: { targets: ImageTarget[
     setBusy(true);
     setOutcomes(null);
     setProgress([0, match.matched.length]);
-    const jobs = match.matched.map((m) => ({ kind: m.target.kind, id: m.target.id, file: files[m.index] }));
+    const jobs = match.matched.map((m) => ({ kind: m.target.kind, id: m.target.id, file: files[m.index], slot: m.slot, extras: extras[`${m.target.kind}:${m.target.id}`] ?? [] }));
     try {
       const result = await uploadImages(jobs, (done, total) => setProgress([done, total]));
       setOutcomes(result);
@@ -45,7 +45,7 @@ export default function ProductImagesUpload({ targets }: { targets: ImageTarget[
 
   const okCount = outcomes?.filter((o) => o.ok).length ?? 0;
   const failed = outcomes?.filter((o) => !o.ok) ?? [];
-  const labelOf = (o: UploadOutcome) => targets.find((t) => t.id === o.id && t.kind === o.kind)?.label ?? o.id;
+  const labelOf = (o: UploadOutcome) => (targets.find((t) => t.id === o.id && t.kind === o.kind)?.label ?? o.id) + (o.slot && o.slot > 1 ? ` (ფოტო ${o.slot})` : "");
 
   return <section className="panel">
     <div
@@ -79,7 +79,7 @@ export default function ProductImagesUpload({ targets }: { targets: ImageTarget[
       {match.duplicates.length > 0 && <details><summary>ერთ პროდუქტზე ორი ფოტო ({match.duplicates.length})</summary>
         <ul>{match.duplicates.map((u) => <li key={u.index}>{u.fileName} (უკვე აღებულია: {u.of})</li>)}</ul></details>}
       {match.matched.length > 0 && <details><summary>რა მიება რას ({match.matched.length})</summary>
-        <ul>{match.matched.slice(0, 300).map((m) => <li key={m.index}>{m.fileName} → {m.target.label}</li>)}</ul></details>}
+        <ul>{match.matched.slice(0, 300).map((m) => <li key={m.index}>{m.fileName} → {m.target.label}{m.slot > 1 && ` (ფოტო ${m.slot})`}</li>)}</ul></details>}
       <div>
         <button type="button" className="button primary" disabled={busy || match.matched.length === 0} onClick={start}>
           {busy ? `იტვირთება ${progress[0]} / ${progress[1]}…` : `ატვირთვა (${match.matched.length})`}
@@ -90,7 +90,7 @@ export default function ProductImagesUpload({ targets }: { targets: ImageTarget[
 
     {outcomes && <div role="status">
       <p className={failed.length ? "notice error" : "notice success"}>ატვირთულია: {okCount}{failed.length > 0 && <>, ვერ აიტვირთა: {failed.length}</>}.</p>
-      {failed.length > 0 && <ul>{failed.map((o) => <li key={`${o.kind}-${o.id}`}>{labelOf(o)} — {o.reason}</li>)}</ul>}
+      {failed.length > 0 && <ul>{failed.map((o) => <li key={`${o.kind}-${o.id}-${o.slot ?? 1}`}>{labelOf(o)} — {o.reason}</li>)}</ul>}
     </div>}
   </section>;
 }

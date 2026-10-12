@@ -80,7 +80,7 @@ export default async function NewSalePage({
       .order("id")
       .range(from, to))),
 
-    loadImageMap(client).catch(() => ({ map: new Map<string, string>(), ready: false })),
+    loadImageMap(client).catch(() => ({ map: new Map<string, string>(), extras: new Map<string, string[]>(), ready: false, extrasReady: false })),
   ]);
 
   const session = sessionData?.[0] ?? null;

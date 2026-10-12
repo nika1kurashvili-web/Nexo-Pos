@@ -112,6 +112,7 @@ export type PosFunctions = {
   pos_products_overview: { Args: Record<string, never>; Returns: ProductOverviewItem[] };
   pos_create_product: { Args: { p_name: string; p_sku: string | null; p_price: string; p_cost: string | null; p_weight: string }; Returns: string };
   pos_catalog_items_used: { Args: { p_ids: Json }; Returns: Json };
+  pos_set_product_extras: { Args: { p_items: Json }; Returns: number };
   pos_set_product_images: { Args: { p_items: Json }; Returns: number };
   pos_products_import: { Args: { p_request: string; p_items: Json }; Returns: Json };
   pos_set_category: { Args: { p_kind: string; p_id: string; p_category: string | null }; Returns: undefined };

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildImageTargets, matchImageFiles, normKey, thumbUrl } from '../lib/pos/product-images.ts';
+import { applyExtras, buildImageTargets, matchImageFiles, normKey, thumbUrl } from '../lib/pos/product-images.ts';
 
 const items = [
   { kind: 'product', id: 'p1', product_id: 'p1', name: 'რძე', variant_name: null, sku: '4860001', active: true },
@@ -48,4 +48,23 @@ test('same name on two products is ambiguous', () => {
 test('helpers', () => {
   assert.equal(normKey(' მინის  საწმენდი / უნივერსალი '), 'მინისსაწმენდიუნივერსალი');
   assert.equal(thumbUrl('https://x.supabase.co/storage/v1/object/public/product-images/p/a.webp?v=1'), 'https://x.supabase.co/storage/v1/object/public/product-images/p/a_s.webp?v=1');
+});
+
+test('"name-2" … "name-7" are extra photos of the same product; full-name match wins', () => {
+  const r = matchImageFiles(['4860001.jpg', '4860001-2.jpg', '4860001_3.png', 'რძე - 4.jpg', 'unknown-2.jpg'], targets, true);
+  const slots = Object.fromEntries(r.matched.map((x) => [x.fileName, x.slot]));
+  assert.deepEqual(slots, { '4860001.jpg': 1, '4860001-2.jpg': 2, '4860001_3.png': 3, 'რძე - 4.jpg': 4 });
+  assert.equal(r.unmatched.length, 1);
+  assert.equal(r.duplicates.length, 0);
+  const t = buildImageTargets(items, (k, id) => k === 'product' && id === 'p1', (k, id) => (id === 'p1' ? 2 : 0));
+  const r2 = matchImageFiles(['4860001-2.jpg', '4860001-4.jpg'], t, false);
+  assert.equal(r2.skippedExisting.length, 1); // slot 2 already filled
+  assert.equal(r2.matched.length, 1);
+});
+
+test('applyExtras replaces, appends and caps at 6', () => {
+  assert.deepEqual(applyExtras(['a', 'b'], [{ slot: 3, url: 'B' }, { slot: 4, url: 'c' }]), ['a', 'B', 'c']);
+  assert.deepEqual(applyExtras([], [{ slot: 5, url: 'x' }]), ['x']);
+  assert.equal(applyExtras(['1', '2', '3', '4', '5', '6'], [{ slot: 7, url: 'z' }])[5], 'z');
+  assert.equal(applyExtras(['1', '2', '3', '4', '5', '6'], [{ slot: 8, url: 'z' }]).length, 6);
 });

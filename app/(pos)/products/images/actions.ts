@@ -7,7 +7,7 @@ import { safeAuthError } from "@/lib/auth/diagnostics";
 const BUCKET = "product-images";
 const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export type UploadRequest = { kind: "product" | "variant"; id: string; ext: "webp" | "jpg" };
+export type UploadRequest = { kind: "product" | "variant"; id: string; ext: "webp" | "jpg"; extra?: boolean };
 export type UploadTicket = {
   kind: "product" | "variant";
   id: string;
@@ -34,8 +34,10 @@ export async function prepareImageUploads(items: UploadRequest[]): Promise<{ ok:
   for (const item of items) {
     if (!valid(item)) { tickets.push({ kind: item?.kind, id: item?.id, ok: false }); continue; }
     const dir = item.kind === "product" ? "p" : "v";
-    const fullPath = `${dir}/${item.id.toLowerCase()}.${item.ext}`;
-    const thumbPath = `${dir}/${item.id.toLowerCase()}_s.${item.ext}`;
+    // დამატებით ფოტოს უნიკალური სახელი აქვს, რომ ერთმანეთს არ გადააწეროს
+    const stem = item.extra ? `${item.id.toLowerCase()}-${crypto.randomUUID().slice(0, 8)}` : item.id.toLowerCase();
+    const fullPath = `${dir}/${stem}.${item.ext}`;
+    const thumbPath = `${dir}/${stem}_s.${item.ext}`;
     const [full, thumb] = await Promise.all([
       client.storage.from(BUCKET).createSignedUploadUrl(fullPath, { upsert: true }),
       client.storage.from(BUCKET).createSignedUploadUrl(thumbPath, { upsert: true }),
@@ -53,7 +55,7 @@ export async function prepareImageUploads(items: UploadRequest[]): Promise<{ ok:
       fullToken: full.data.token,
       thumbPath,
       thumbToken: thumb.data.token,
-      url: `${base}/${fullPath}?v=${version}`,
+      url: item.extra ? `${base}/${fullPath}` : `${base}/${fullPath}?v=${version}`,
     });
   }
   return { ok: true, tickets, base };
@@ -82,5 +84,37 @@ export async function removeProductImage(kind: "product" | "variant", id: string
   const dir = kind === "product" ? "p" : "v";
   const lower = id.toLowerCase();
   await client.storage.from(BUCKET).remove(["webp", "jpg"].flatMap((ext) => [`${dir}/${lower}.${ext}`, `${dir}/${lower}_s.${ext}`]));
+  return true;
+}
+
+// დამატებითი ფოტოების სრული სია (მაქს. 6) პროდუქტზე/ვარიანტზე.
+export async function saveProductExtras(items: { kind: "product" | "variant"; id: string; urls: string[] }[]): Promise<{ ok: boolean }> {
+  await requireAdmin();
+  if (!Array.isArray(items) || items.length === 0 || items.length > 100) return { ok: false };
+  const client = await rpcClient();
+  const { error } = await client.rpc("pos_set_product_extras", { p_items: items });
+  if (error) {
+    console.error("[nexo-pos-images] extras", safeAuthError(error));
+    return { ok: false };
+  }
+  return { ok: true };
+}
+
+// დამატებითი ფოტოს მოხსნა: ჯერ სია განახლდება, შემდეგ ფაილები იშლება საცავიდან.
+export async function removeExtraImage(kind: "product" | "variant", id: string, urls: string[], removeUrl: string): Promise<boolean> {
+  await requireAdmin();
+  if (!valid({ kind, id, ext: "webp" }) || !Array.isArray(urls) || !urls.includes(removeUrl)) return false;
+  const next = urls.filter((u) => u !== removeUrl);
+  const saved = await saveProductExtras([{ kind, id, urls: next }]);
+  if (!saved.ok) return false;
+  const prefix = `${process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""}/storage/v1/object/public/${BUCKET}/`;
+  if (removeUrl.startsWith(prefix)) {
+    const path = removeUrl.slice(prefix.length).split("?")[0];
+    const dir = kind === "product" ? "p" : "v";
+    if (new RegExp(`^${dir}/${id.toLowerCase()}-[0-9a-f]{8}\\.(webp|jpg)$`).test(path)) {
+      const client = await rpcClient();
+      await client.storage.from(BUCKET).remove([path, path.replace(/\.(webp|jpg)$/, "_s.$1")]);
+    }
+  }
   return true;
 }

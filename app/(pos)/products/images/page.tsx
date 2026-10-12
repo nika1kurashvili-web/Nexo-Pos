@@ -12,7 +12,7 @@ export default async function ProductImagesPage() {
   const client = await posClient();
   const [overview, images] = await Promise.all([client.rpc("pos_products_overview"), loadImageMap(client)]);
   const items = overview.data ?? [];
-  const targets = buildImageTargets(items, (kind, id) => images.map.has(`${kind}:${id}`));
+  const targets = buildImageTargets(items, (kind, id) => images.map.has(`${kind}:${id}`), (kind, id) => images.extras.get(`${kind}:${id}`)?.length ?? 0);
   const without = targets.filter((t) => !t.hasImage);
 
   return <>
@@ -22,6 +22,8 @@ export default async function ProductImagesPage() {
     </div>
     {!images.ready && <p className="notice error" role="alert">ფოტოების სვეტი ვერ მოიძებნა. გაუშვით მიგრაცია 202610120001 Supabase-ში.</p>}
 
+    {images.ready && !images.extrasReady && <p className="notice error" role="alert">დამატებითი ფოტოებისთვის გაუშვით მიგრაცია 202610120002 Supabase-ში.</p>}
+
     <section className="panel">
       <h2>როგორ მუშაობს</h2>
       <ol>
@@ -29,10 +31,11 @@ export default async function ProductImagesPage() {
         <li>ვარიანტიან პროდუქტზე დაარქვით <code>პროდუქტი ვარიანტი</code> (მაგ. <code>მაისური წითელი.jpg</code>) ან ვარიანტის კოდი. ფოტო, რომელსაც მხოლოდ პროდუქტის სახელი ექნება, ყველა ვარიანტზე გამოჩნდება.</li>
         <li>ჩააგდეთ ყველა ფოტო ერთად ქვემოთ (ან აირჩიეთ მთელი საქაღალდე). პროგრამა თვითონ მიაბამს, აჩვენებს რა მიება და რა ვერ მოიძებნა, და დაგელოდებათ თქვენს დადასტურებას.</li>
       </ol>
+      <p><strong>რამდენიმე ფოტო ერთ პროდუქტზე (მაქს. 7):</strong> პირველ (მთავარ) ფოტოს დაარქვით ჩვეულებრივი სახელი, დანარჩენებს დააბოლოვეთ <code>-2</code>, <code>-3</code> … <code>-7</code>. მაგ.: <code>4860001234567.jpg</code> (მთავარი), <code>4860001234567-2.jpg</code>, <code>4860001234567-3.jpg</code>. მთავარი ფოტო ჩანს გაყიდვის ეკრანზე, დანარჩენი — პროდუქტების სიაში „ფოტოები“-ზე დაჭერით და სხვა საიტებისთვის.</p>
       <p className="muted">ფოტო ავტომატურად დაპატარავდება (მაქს. 1000 პიქსელი, დაახლ. 100 KB), ამიტომ დიდი ფოტოც შეგიძლიათ ატვირთოთ. სახელში ზომას, ტირეს, ინტერვალს და დიდ/პატარა ასოს მნიშვნელობა არ აქვს.</p>
     </section>
 
-    <ProductImagesUpload targets={targets} />
+    <ProductImagesUpload targets={targets} extras={Object.fromEntries(images.extras)} />
 
     <section className="panel">
       <details>
