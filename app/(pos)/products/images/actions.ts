@@ -5,6 +5,7 @@ import { rpcClient } from "@/lib/pos/server";
 import { safeAuthError } from "@/lib/auth/diagnostics";
 
 const BUCKET = "product-images";
+const supabaseUrl = () => (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").trim().replace(/\/+$/, "");
 const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export type UploadRequest = { kind: "product" | "variant"; id: string; ext: "webp" | "jpg"; extra?: boolean };
@@ -26,7 +27,7 @@ function valid(item: UploadRequest) {
 // ნაბიჯი 1: ადმინისთვის ერთჯერადი ატვირთვის ბილეთები (ფაილი პირდაპირ Supabase-ში ადის, POS სერვერზე არ გადის).
 export async function prepareImageUploads(items: UploadRequest[]): Promise<{ ok: boolean; tickets: UploadTicket[]; base: string }> {
   await requireAdmin();
-  const base = `${process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""}/storage/v1/object/public/${BUCKET}`;
+  const base = `${supabaseUrl()}/storage/v1/object/public/${BUCKET}`;
   if (!Array.isArray(items) || items.length === 0 || items.length > 20) return { ok: false, tickets: [], base };
   const client = await rpcClient();
   const version = Date.now();
@@ -107,7 +108,7 @@ export async function removeExtraImage(kind: "product" | "variant", id: string, 
   const next = urls.filter((u) => u !== removeUrl);
   const saved = await saveProductExtras([{ kind, id, urls: next }]);
   if (!saved.ok) return false;
-  const prefix = `${process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""}/storage/v1/object/public/${BUCKET}/`;
+  const prefix = `${supabaseUrl()}/storage/v1/object/public/${BUCKET}/`;
   if (removeUrl.startsWith(prefix)) {
     const path = removeUrl.slice(prefix.length).split("?")[0];
     const dir = kind === "product" ? "p" : "v";
