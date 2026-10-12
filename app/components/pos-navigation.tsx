@@ -14,6 +14,23 @@ type NavItem = {
   primary?: boolean;
 };
 
+// პატარა ხატულები მენიუსთვის (ხაზოვანი, 24x24)
+const ICONS: Record<string, string> = {
+  "/": "M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z",
+  "/sales/new": "M12 5v14M5 12h14",
+  "/sales": "M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6",
+  "/returns": "M9 14 4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3",
+  "/customers": "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8",
+  "/registers": "M4 7h16v13H4zM8 7V4h8v3M8 12h8",
+  "/payment-methods": "M3 6h18v12H3zM3 10h18",
+  "/employees": "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8",
+  "/products": "M21 8 12 3 3 8v8l9 5 9-5zM3 8l9 5 9-5M12 13v8",
+  "/purchases": "M6 6h15l-2 9H8zM6 6 5 3H2M9 20.5a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1M18 20.5a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1",
+  "/inventories": "M9 4h6v3H9zM7 5H5v16h14V5h-2M9 12h6M9 16h4",
+  "/analytics": "M4 20V10M10 20V4M16 20v-8M22 20H2",
+  "/reports": "M6 3h8l5 5v13H6zM14 3v5h5M9 13h6M9 17h6",
+};
+
 export default function PosNavigation({
   isAdmin,
 }: Props) {
@@ -107,7 +124,12 @@ export default function PosNavigation({
           .join(" ")}
         aria-current={active ? "page" : undefined}
       >
-        {item.label}
+        {ICONS[item.href] && (
+          <svg className="nav-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d={ICONS[item.href]} />
+          </svg>
+        )}
+        <span>{item.label.replace(/^\+\s*/, "")}</span>
       </Link>
     );
   }
