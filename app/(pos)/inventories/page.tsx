@@ -41,7 +41,7 @@ export default async function InventoriesPage({
         </p>
       )}
 
-      <section className="panel">
+      <section className="panel list-panel">
         {rows.length === 0 ? (
           <p className="muted">ინვენტარიზაცია ჯერ არ ჩატარებულა. დააჭირეთ „დამატება“-ს.</p>
         ) : (

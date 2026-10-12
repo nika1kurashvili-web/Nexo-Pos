@@ -60,7 +60,7 @@ export default async function PurchasesPage({
         </p>
       )}
 
-      <section className="panel">
+      <section className="panel list-panel">
         {rows.length === 0 ? (
           <p className="muted">შესყიდვები ჯერ არ არის. დააჭირეთ „დამატება“-ს.</p>
         ) : (

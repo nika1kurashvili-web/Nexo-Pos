@@ -210,7 +210,7 @@ export default async function SalesPage({
         loadError={Boolean(error)}
       />
 
-      <section className="panel">
+      <section className="panel filter-panel">
         <h2>გაყიდვების ძებნა</h2>
 
         <form
@@ -304,7 +304,7 @@ export default async function SalesPage({
         </form>
       </section>
 
-      <section className="panel">
+      <section className="panel list-panel">
         <h2>გაყიდვები</h2>
 
         <p>ნაჩვენებია მაქსიმუმ 100 შედეგი.</p>
