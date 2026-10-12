@@ -1391,3 +1391,30 @@ h1 .badge { font-size: 0.85rem; vertical-align: middle; margin-left: 0.4rem; }
 .img-slot { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; }
 .img-slot-actions { display: flex; gap: 0.2rem; }
 .img-add { align-self: center; }
+
+/* =========================
+   უფრო კომპაქტური ზომები (პატარა შრიფტი, ვიწრო ცხრილები)
+   ========================= */
+html { font-size: 87.5%; }
+p { font-size: 0.95rem; }
+th, td { padding: 0.55rem 0.6rem; }
+.main-content { padding: 1.5rem; }
+.button { min-height: 2.3rem; padding: 0.45rem 0.9rem; }
+.panel { padding-top: 1rem; padding-bottom: 1rem; }
+
+/* პროდუქტების ცხრილი: ეტევა ეკრანზე, გვერდზე გადაწევა არ სჭირდება */
+.products-table { width: 100%; font-size: 0.85rem; table-layout: auto; }
+.products-table th { font-size: 0.75rem; padding: 0.45rem 0.4rem; white-space: normal; }
+.products-table td { padding: 0.4rem 0.4rem; }
+.products-table .cell-input { width: 4.6rem; padding: 0.3rem 0.4rem; font-size: 0.85rem; }
+.products-table .cell-money .cell-input { padding-right: 1.3rem; }
+.products-table .cell-money::after { right: 0.4rem; font-size: 0.8rem; }
+.products-table .cell-select { max-width: 6.5rem; padding: 0.3rem 0.35rem; font-size: 0.82rem; }
+.products-table .row-actions { white-space: normal; min-width: 0; }
+.products-table .row-actions .button { min-height: 1.9rem; padding: 0.25rem 0.55rem; font-size: 0.78rem; }
+.products-table .img-cell { min-width: 0; gap: 0.25rem; max-width: 9rem; }
+.products-table .img-thumb { width: 36px; height: 36px; }
+.products-table .img-btn { padding: 0.15rem 0.4rem; font-size: 0.72rem; min-height: 0; }
+.products-table td:nth-child(2) strong { overflow-wrap: anywhere; }
+.products-table td:nth-child(4) { white-space: nowrap; }
+@media (min-width: 1000px) { .panel:has(.products-table) .table-scroll { overflow-x: visible; } }
