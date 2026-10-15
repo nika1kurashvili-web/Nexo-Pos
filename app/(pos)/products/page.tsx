@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth/server";
 import { money, posClient } from "@/lib/pos/server";
 import { loadImageMap } from "@/lib/pos/product-images-load";
 import ProductImageCell from "@/app/components/product-image-cell";
+import ProductSearchForm from "@/app/components/product-search-form";
 import { createProduct, saveProduct, toggleProduct } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -89,12 +90,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
     </section>
 
     <section className="panel">
-      <form method="get" className="data-form">
-        <label>ძებნა (სახელი ან კოდი)<input name="q" defaultValue={q} maxLength={100} /></label>
-        <label>კატეგორია<select name="cat" defaultValue={cat}><option value="">ყველა</option>{CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}<option value="none">კატეგორიის გარეშე</option></select></label>
-        <label className="check"><input type="checkbox" name="all" value="1" defaultChecked={all} />გაუქმებულებიც</label>
-        <div><button type="submit" className="button primary">ძებნა</button>{" "}<Link href="/products" className="button secondary">გასუფთავება</Link></div>
-      </form>
+      <ProductSearchForm q={q} cat={cat} all={all} categories={CATEGORIES} />
       <p className="muted">აქტიური პროდუქტი: {active.length} (მანქანა: {carCount}, ტექნიკა: {techCount}{noneCount > 0 && <>, კატეგორიის გარეშე: <strong>{noneCount}</strong></>}). მარაგის ღირებულება შესყიდვის ფასით: <strong>{money(stockValue)}</strong>. რაოდენობის შეცვლა ინახება როგორც ინვენტარიზაცია („ხელით შესწორება“).</p>
     </section>
 
