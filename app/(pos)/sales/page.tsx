@@ -3,6 +3,7 @@ import type { PostgrestError } from "@supabase/supabase-js";
 import type { Sale } from "@/lib/pos/types";
 import { requirePosProfile } from "@/lib/auth/server";
 import { posClient, money } from "@/lib/pos/server";
+import LiveFilterForm from "@/app/components/live-filter-form";
 import { Notice } from "@/app/components/pos-forms";
 import { ReturnStatusBadge } from "@/app/components/return-status-badge";
 import { loadReturnStatuses } from "@/lib/pos/return-status-load";
@@ -213,11 +214,7 @@ export default async function SalesPage({
       <section className="panel filter-panel">
         <h2>გაყიდვების ძებნა</h2>
 
-        <form
-          key={JSON.stringify([saleNumber, from, to, cashier, product, payment, type])}
-          method="get"
-          className="data-form sales-filters"
-        >
+        <LiveFilterForm className="data-form sales-filters">
           <label>
             გაყიდვის ნომერი
             <input
@@ -297,11 +294,11 @@ export default async function SalesPage({
               ძებნა
             </button>
 
-            <Link href="/sales" className="button secondary">
+            <Link href="/sales" className="button secondary" data-clear>
               გასუფთავება
             </Link>
           </div>
-        </form>
+        </LiveFilterForm>
       </section>
 
       <section className="panel list-panel">
