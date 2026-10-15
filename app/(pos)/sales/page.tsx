@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import type { PostgrestError } from "@supabase/supabase-js";
 import type { Sale } from "@/lib/pos/types";
 import { requirePosProfile } from "@/lib/auth/server";
@@ -20,6 +21,7 @@ type SearchParams = {
   cashier?: string;
   product?: string;
   payment?: string;
+  tracking?: string;
 };
 
 export default async function SalesPage({
@@ -38,6 +40,7 @@ export default async function SalesPage({
   const cashier = params.cashier?.trim() ?? "";
   const product = params.product?.trim() ?? "";
   const payment = params.payment?.trim() ?? "";
+  const tracking = (params.tracking?.trim() ?? "").slice(0, 200);
 
   const type =
     params.type === "retail" || params.type === "wholesale"
@@ -156,6 +159,14 @@ export default async function SalesPage({
     }
   }
 
+  if (tracking) {
+    const safeTracking = tracking
+      .replaceAll(/[,()"\\]/g, " ")
+      .replaceAll("%", "\\%")
+      .replaceAll("_", "\\_");
+    query = query.ilike("tracking_code", `%${safeTracking}%`);
+  }
+
   if (type) {
     query = query.eq("sale_type", type);
   }
@@ -199,6 +210,14 @@ export default async function SalesPage({
     error = result.error;
   }
 
+  /*
+   * ტრექინგის სკანირება: თუ კოდი ზუსტად ერთ გაყიდვას ემთხვევა,
+   * პირდაპირ მის გვერდზე გადავდივართ.
+   */
+  if (tracking && data?.length === 1 && data[0].tracking_code?.trim().toLowerCase() === tracking.toLowerCase()) {
+    redirect(`/sales/${data[0].id}`);
+  }
+
   const returnStatuses = data?.length ? await loadReturnStatuses(client, data.map((sale) => sale.id)) : new Map();
 
   return (
@@ -215,6 +234,18 @@ export default async function SalesPage({
         <h2>გაყიდვების ძებნა</h2>
 
         <LiveFilterForm className="data-form sales-filters">
+          <label>
+            თრექინგი (დაასკანერეთ ან ჩაწერეთ)
+            <input
+              name="tracking"
+              type="search"
+              placeholder="თრექინგ კოდი"
+              defaultValue={tracking}
+              autoComplete="off"
+              autoFocus
+            />
+          </label>
+
           <label>
             გაყიდვის ნომერი
             <input
@@ -315,6 +346,7 @@ export default async function SalesPage({
                 <th>მოლარე</th>
                 <th>ტიპი</th>
                 <th>კლიენტი</th>
+                <th>თრექინგი</th>
                 <th>სულ</th>
                 <th>გადახდილი</th>
                 <th>დავალიანება</th>
@@ -345,6 +377,8 @@ export default async function SalesPage({
                   <td>
                     {sale.customer_name ?? "საცალო კლიენტი"}
                   </td>
+
+                  <td>{sale.tracking_code ?? "—"}</td>
 
                   <td>
                     <strong>{money(sale.total)}</strong>
