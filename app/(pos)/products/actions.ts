@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/auth/server";
 import { rpcClient } from "@/lib/pos/server";
 import { safeAuthError } from "@/lib/auth/diagnostics";
 import { isCount, isPrice, normalizeDecimal } from "@/lib/pos/inventory";
+import { filtersToQuery, parseFilters, sanitizeQuery } from "@/lib/pos/product-filters";
 
 const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -24,14 +25,11 @@ const categories = ["მანქანა", "ტექნიკა"];
 const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
 
 function back(form: FormData, extra: string) {
-  const q = text(form, "q");
-  const all = text(form, "all") === "1";
-  const params = new URLSearchParams();
-  if (q) params.set("q", q.slice(0, 100));
-  if (all) params.set("all", "1");
-  const cat = text(form, "cat");
-  if (cat) params.set("cat", cat.slice(0, 20));
-  const base = params.toString();
+  // ფილტრები ინახება მთლიანად (სვეტების ფილტრებიც), ძველი ფორმების ველებიც მხარდაჭერილია.
+  const raw = form.get("qs");
+  const base = raw !== null
+    ? sanitizeQuery(String(raw))
+    : filtersToQuery(parseFilters({ q: text(form, "q"), all: text(form, "all"), cat: text(form, "cat") }));
   return `/products?${base ? `${base}&` : ""}${extra}`;
 }
 

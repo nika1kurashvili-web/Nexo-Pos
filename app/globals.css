@@ -1516,3 +1516,26 @@ td { padding: 0.5rem 0.6rem; }
   .list-panel, .filter-panel { padding: 0.75rem; }
   .list-panel table { font-size: 0.78rem; }
 }
+
+/* მარაგის ნაშთი ახალი გაყიდვის ფილებზე */
+.tile-photo { position: relative; }
+.tile-stock { position: absolute; left: 0.35rem; bottom: 0.35rem; z-index: 1; padding: 0.15rem 0.5rem; border-radius: 999px; font-size: 0.72rem; font-weight: 700; line-height: 1.3; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25); backdrop-filter: blur(2px); }
+.tile-stock.ok { background: rgba(22, 128, 61, 0.92); color: #fff; }
+.tile-stock.low { background: rgba(217, 119, 6, 0.95); color: #fff; }
+.tile-stock.out { background: rgba(185, 28, 28, 0.92); color: #fff; }
+
+/* პროდუქტების ცხრილი: ექსელის მსგავსი სვეტის ფილტრები */
+.products-table .filter-head th { background: #f4f6fa; position: relative; }
+.products-table .filter-head th.has-filter { background: #e8efff; }
+.th-inner { display: inline-flex; align-items: center; gap: 0.3rem; }
+.filter-btn { display: inline-flex; align-items: center; justify-content: center; width: 1.4rem; height: 1.4rem; padding: 0; border: 1px solid transparent; border-radius: 0.35rem; background: transparent; color: #7a8498; cursor: pointer; }
+.filter-btn:hover { background: #fff; border-color: #cfd6e4; color: #274bc4; }
+.filter-btn.on { background: #274bc4; color: #fff; }
+.filter-pop { position: fixed; z-index: 60; width: 15rem; padding: 0.8rem; display: grid; gap: 0.55rem; background: #fff; border: 1px solid #cfd6e4; border-radius: 0.75rem; box-shadow: 0 12px 32px rgba(20, 30, 60, 0.18); font-weight: 400; text-transform: none; letter-spacing: 0; }
+.filter-pop strong { font-size: 0.85rem; }
+.filter-pop input, .filter-pop select { width: 100%; min-height: 2.1rem; font-size: 0.88rem; padding: 0.3rem 0.55rem; border-radius: 0.5rem; }
+.filter-range { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+.filter-range label { display: grid; gap: 0.2rem; font-size: 0.75rem; color: #5b6475; }
+.filter-pop-actions { display: flex; gap: 0.4rem; }
+.filter-pop-actions .button { flex: 1 1 auto; min-height: 2rem; padding: 0.25rem 0.6rem; font-size: 0.8rem; }
+.filter-pop-row td { background: transparent !important; }

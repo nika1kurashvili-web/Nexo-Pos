@@ -4,11 +4,13 @@ import { money, posClient } from "@/lib/pos/server";
 import { loadImageMap } from "@/lib/pos/product-images-load";
 import ProductImageCell from "@/app/components/product-image-cell";
 import ProductSearchForm from "@/app/components/product-search-form";
+import ProductFilterHeader from "@/app/components/product-filter-header";
+import { filtersToQuery, hasActiveFilters, matchesFilters, parseFilters } from "@/lib/pos/product-filters";
 import { createProduct, saveProduct, toggleProduct } from "./actions";
 
 export const dynamic = "force-dynamic";
 
-type Params = { cat?: string; deleted?: string; updated?: string; imported?: string; q?: string; all?: string; saved?: string; created?: string; deactivated?: string; restored?: string; error?: string };
+type Params = { cat?: string; deleted?: string; updated?: string; imported?: string; q?: string; all?: string; name?: string; sku?: string; status?: string; stock_min?: string; stock_max?: string; cost_min?: string; cost_max?: string; price_min?: string; price_max?: string; margin_min?: string; margin_max?: string; saved?: string; created?: string; deactivated?: string; restored?: string; error?: string };
 
 const errors: Record<string, string> = {
   invalid: "შეამოწმეთ შეყვანილი მონაცემები.",
@@ -32,20 +34,14 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
   await requireAdmin();
   const client = await posClient();
   const params = await searchParams;
-  const q = typeof params.q === "string" ? params.q.trim().slice(0, 100) : "";
-  const all = params.all === "1";
-  const cat = params.cat === "მანქანა" || params.cat === "ტექნიკა" || params.cat === "none" ? params.cat : "";
+  const filters = parseFilters(params);
+  const q = filters.q;
+  const qs = filtersToQuery(filters);
 
   const [{ data, error }, images] = await Promise.all([client.rpc("pos_products_overview"), loadImageMap(client)]);
   if (error) console.error("[products] overview failed:", error.code, error.message);
   const items = data ?? [];
-  const needle = q.toLowerCase();
-  const rows = items.filter((item) => {
-    if (!all && !item.active) return false;
-    if (cat === "none" ? item.category !== null : cat && item.category !== cat) return false;
-    if (!needle) return true;
-    return `${item.name} ${item.variant_name ?? ""} ${item.sku ?? ""}`.toLowerCase().includes(needle);
-  });
+  const rows = items.filter((item) => matchesFilters(item, filters));
 
   const active = items.filter((item) => item.active);
   const carCount = active.filter((item) => item.category === "მანქანა").length;
@@ -74,8 +70,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
         <summary><strong>+ ახალი პროდუქტი</strong></summary>
         <form action={createProduct} className="data-form">
           <input type="hidden" name="request_id" value={crypto.randomUUID()} />
-          <input type="hidden" name="q" value={q} />
-          {all && <input type="hidden" name="all" value="1" />}
+          <input type="hidden" name="qs" value={qs} />
           <label>სახელი<input name="name" required maxLength={200} /></label>
           <label>კატეგორია<select name="category" defaultValue=""><option value="">— არ არის —</option>{CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}</select></label>
           <label>კოდი (SKU / ბარკოდი)<input name="sku" maxLength={100} /></label>
@@ -90,19 +85,16 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
     </section>
 
     <section className="panel">
-      <ProductSearchForm q={q} cat={cat} all={all} categories={CATEGORIES} />
+      <ProductSearchForm q={q} />
       <p className="muted">აქტიური პროდუქტი: {active.length} (მანქანა: {carCount}, ტექნიკა: {techCount}{noneCount > 0 && <>, კატეგორიის გარეშე: <strong>{noneCount}</strong></>}). მარაგის ღირებულება შესყიდვის ფასით: <strong>{money(stockValue)}</strong>. რაოდენობის შეცვლა ინახება როგორც ინვენტარიზაცია („ხელით შესწორება“).</p>
     </section>
 
     <section className="panel">
+      {hasActiveFilters(filters) && <p className="muted">ფილტრით ნაჩვენებია {rows.length} პროდუქტი {items.length}-დან.</p>}
       {rows.length === 0 ? <p className="muted">პროდუქტი ვერ მოიძებნა.</p> : (
         <div className="table-scroll">
           <table className="products-table">
-            <thead><tr>
-              <th scope="col">ფოტო</th><th scope="col">პროდუქტი</th><th scope="col">კატეგორია</th><th scope="col">კოდი</th><th scope="col">მარაგი</th>
-              <th scope="col">შესყიდვის ფასი</th><th scope="col">გასაყიდი ფასი</th><th scope="col">მოგება</th>
-              <th scope="col">სტატუსი</th><th scope="col">მოქმედება</th>
-            </tr></thead>
+            <thead><ProductFilterHeader /></thead>
             <tbody>{rows.map((item) => {
               const formId = `p-${item.kind}-${item.id}`;
               const stock = Number(item.stock);
@@ -131,9 +123,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                     <input type="hidden" name="orig_cost" value={plain(item.cost)} />
                     <input type="hidden" name="orig_price" value={plain(item.price ?? 0)} />
                     <input type="hidden" name="active" value={item.active ? "1" : "0"} />
-                    <input type="hidden" name="q" value={q} />
-                    {all && <input type="hidden" name="all" value="1" />}
-                    {cat && <input type="hidden" name="cat" value={cat} />}
+                    <input type="hidden" name="qs" value={qs} />
                     <button type="submit" className="button primary">შენახვა</button>{" "}
                     <button type="submit" formAction={toggleProduct} className="button secondary">{item.active ? "გაუქმება" : "აღდგენა"}</button>
                   </form>
