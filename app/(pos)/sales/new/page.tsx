@@ -42,6 +42,7 @@ export default async function NewSalePage({
     { data: paymentData, error: paymentError },
     { data: customerData, error: customerError },
     images,
+    stockRows,
   ] = await Promise.all([
     measureSaleQuery("session", client
       .from("pos_register_sessions")
@@ -81,6 +82,11 @@ export default async function NewSalePage({
       .range(from, to))),
 
     loadImageMap(client).catch(() => ({ map: new Map<string, string>(), extras: new Map<string, string[]>(), ready: false, extrasReady: false })),
+    // მარაგის ნაშთი: თუ მიგრაცია ჯერ არ არის გაშვებული, უბრალოდ არ ვაჩვენებთ.
+    Promise.resolve(client.rpc("pos_stock_levels")).then(
+      ({ data, error }) => (error ? null : (data as unknown as { kind: string; id: string; stock: number | string }[] | null)),
+      () => null,
+    ),
   ]);
 
   const session = sessionData?.[0] ?? null;
@@ -142,6 +148,9 @@ export default async function NewSalePage({
     variants.map((variant) => variant.product_id)
   );
 
+  const stockMap = stockRows ? new Map(stockRows.map((row) => [`${row.kind}:${row.id}`, Number(row.stock)])) : null;
+  const stockOf = (kind: string, id: string) => (stockMap ? stockMap.get(`${kind}:${id}`) ?? 0 : null);
+
   const pic = (url: string | undefined) => (url ? thumbUrl(url) : null);
 
   const catalog = [
@@ -159,6 +168,7 @@ export default async function NewSalePage({
         sku: product.sku,
         price: Number(product.price),
         imageUrl: pic(images.map.get(`product:${product.id}`)),
+        stock: stockOf("product", product.id),
       })),
 
     ...variants
@@ -180,6 +190,7 @@ export default async function NewSalePage({
           sku: variant.sku ?? product.sku,
           price: Number(variant.price),
           imageUrl: pic(images.map.get(`variant:${variant.id}`) ?? images.map.get(`product:${product.id}`)),
+          stock: stockOf("variant", variant.id),
         };
       }),
   ];

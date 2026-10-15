@@ -13,6 +13,8 @@ type CatalogItem = {
   sku: string | null;
   price: number;
   imageUrl?: string | null;
+  // მარაგის ნაშთი (null = უცნობია)
+  stock?: number | null;
 };
 
 type PaymentMethod = {
@@ -641,6 +643,11 @@ export default function SaleTerminal({
                   <span className="tile-name">{item.name}</span>
                   {item.variantName && <span className="tile-variant">{item.variantName}</span>}
                   <span className="tile-photo">
+                    {item.stock != null && (
+                      <span className={`tile-stock ${item.stock <= 0 ? "out" : item.stock <= 3 ? "low" : "ok"}`}>
+                        {item.stock <= 0 ? "მარაგი არ არის" : `მარაგი: ${Number(item.stock.toFixed(3))}`}
+                      </span>
+                    )}
                     {item.imageUrl
                       // eslint-disable-next-line @next/next/no-img-element
                       ? <img src={item.imageUrl} alt="" loading="lazy" width={160} height={160} />

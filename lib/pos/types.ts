@@ -109,6 +109,7 @@ export type AnalyticsProductRow = {
   profit: number | string | null;
 };
 export type PosFunctions = {
+  pos_stock_levels: { Args: Record<string, never>; Returns: { kind: string; id: string; stock: number | string }[] };
   pos_products_overview: { Args: Record<string, never>; Returns: ProductOverviewItem[] };
   pos_create_product: { Args: { p_name: string; p_sku: string | null; p_price: string; p_cost: string | null; p_weight: string }; Returns: string };
   pos_catalog_items_used: { Args: { p_ids: Json }; Returns: Json };
