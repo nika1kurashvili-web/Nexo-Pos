@@ -28,6 +28,7 @@ const ICONS: Record<string, string> = {
   "/purchases": "M6 6h15l-2 9H8zM6 6 5 3H2M9 20.5a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1M18 20.5a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1",
   "/inventories": "M9 4h6v3H9zM7 5H5v16h14V5h-2M9 12h6M9 16h4",
   "/analytics": "M4 20V10M10 20V4M16 20v-8M22 20H2",
+  "/profit": "M3 17l5-5 4 4 8-9M15 7h5v5",
   "/reports": "M6 3h8l5 5v13H6zM14 3v5h5M9 13h6M9 17h6",
 };
 
@@ -50,7 +51,7 @@ export default function PosNavigation({
     },
     {
       href: "/sales",
-      label: "გაყიდვები",
+      label: "ტრანზაქციები",
     },
     {
       href: "/returns",
@@ -90,6 +91,10 @@ export default function PosNavigation({
     {
       href: "/analytics",
       label: "ანალიტიკა",
+    },
+    {
+      href: "/profit",
+      label: "გაყიდვები",
     },
     {
       href: "/reports",

@@ -222,7 +222,7 @@ export default async function SalesPage({
 
   return (
     <>
-      <h1>გაყიდვები</h1>
+      <h1>ტრანზაქციები</h1>
 
       <Notice
         error={params.error}
@@ -231,7 +231,7 @@ export default async function SalesPage({
       />
 
       <section className="panel filter-panel">
-        <h2>გაყიდვების ძებნა</h2>
+        <h2>ტრანზაქციების ძებნა</h2>
 
         <LiveFilterForm className="data-form sales-filters">
           <label>
@@ -333,7 +333,7 @@ export default async function SalesPage({
       </section>
 
       <section className="panel list-panel">
-        <h2>გაყიდვები</h2>
+        <h2>ტრანზაქციები</h2>
 
         <p>ნაჩვენებია მაქსიმუმ 100 შედეგი.</p>
 

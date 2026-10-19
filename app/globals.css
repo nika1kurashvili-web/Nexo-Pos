@@ -1549,3 +1549,31 @@ td { padding: 0.5rem 0.6rem; }
 .reason-chip.on { background: #274bc4; border-color: #274bc4; color: #fff; }
 .reason-chip.primary-reason:not(.on) { border-color: #b42323; color: #b42323; font-weight: 600; }
 .reason-chip.primary-reason.on { background: #b42323; border-color: #b42323; }
+
+/* ნავაჭრი */
+.profit-bar { display: flex; flex-wrap: wrap; gap: 0.8rem 1.2rem; align-items: center; justify-content: space-between; padding: 0.8rem 1.1rem; }
+.profit-tabs { display: inline-flex; padding: 0.2rem; background: #f0f2f7; border-radius: 0.65rem; gap: 0.15rem; }
+.profit-tabs a { padding: 0.35rem 0.9rem; border-radius: 0.5rem; font-size: 0.85rem; color: #46526b; text-decoration: none; }
+.profit-tabs a.on { background: #fff; color: #1b2a55; font-weight: 650; box-shadow: 0 1px 3px rgba(20, 30, 60, 0.15); }
+.profit-range { display: inline-flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+.profit-range input[type="date"] { min-height: 2.1rem; font-size: 0.85rem; padding: 0.25rem 0.5rem; border-radius: 0.5rem; }
+.profit-range .button { min-height: 2.1rem; padding: 0.2rem 0.7rem; }
+.profit-presets { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+.profit-presets .reason-chip { text-decoration: none; }
+.profit-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; margin-bottom: 0.6rem; }
+.pct-toggle { display: inline-flex; border: 1px solid #cfd6e4; border-radius: 0.5rem; overflow: hidden; }
+.pct-toggle button { border: 0; background: #fff; padding: 0.3rem 0.7rem; font: inherit; font-size: 0.85rem; cursor: pointer; }
+.pct-toggle button.on { background: #274bc4; color: #fff; }
+.profit-table th { vertical-align: top; }
+.profit-table .th-sort { all: unset; cursor: pointer; font-weight: 650; }
+.profit-table .th-sort:hover { color: #274bc4; }
+.profit-filter-row th { padding: 0.3rem 0.4rem; background: #fff; text-transform: none; position: static; }
+.profit-filter-row input { width: 100%; min-height: 1.8rem; font-size: 0.8rem; padding: 0.2rem 0.45rem; border-radius: 0.4rem; margin-bottom: 0.2rem; }
+.profit-filter-row .range-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 0.25rem; }
+.profit-filter-row .range-pair input { margin: 0; min-width: 3.2rem; }
+.profit-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.profit-table td.neg { color: #b42323; }
+.profit-table tfoot td { background: #f4f6fa; font-weight: 650; border-top: 2px solid #dfe4ee; }
+.profit-pager { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.6rem; margin-top: 0.7rem; }
+.profit-pager label { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; }
+.profit-pager select { min-height: 2rem; font-size: 0.85rem; }
