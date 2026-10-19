@@ -116,6 +116,21 @@ export default async function ReturnsPage({
       )
     : "none";
 
+  // რითი გადაიხადეს გაყიდვისას (ყველაზე დიდი თანხის მეთოდი): დაბრუნებისას ნაგულისხმევად ისევ ის არის არჩეული.
+  let soldWith: { code: string; name: string } | null = null;
+  if (details) {
+    const { data: salePayments } = await client
+      .from("pos_payments")
+      .select("method_code,method_name,amount")
+      .eq("sale_id", details.sale.id)
+      .eq("kind", "sale_payment");
+    let best = -1;
+    for (const p of salePayments ?? []) {
+      const amount = Math.abs(Number(p.amount));
+      if (amount > best) { best = amount; soldWith = { code: p.method_code, name: p.method_name }; }
+    }
+  }
+
   const requestId = crypto.randomUUID();
   const loadError = Boolean(sessionError || methodError || lookupFailed);
   if (sessionError) console.error("[returns] sessions query failed:", sessionError);
@@ -244,6 +259,7 @@ export default async function ReturnsPage({
                 returnedAmount: String(item.returned_amount),
               }))}
               paymentMethods={(methodData ?? []).map((m) => ({ code: m.code, name: m.name }))}
+              soldWith={soldWith}
               sessionId={session?.id ?? null}
               requestId={requestId}
             />

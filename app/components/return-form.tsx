@@ -22,6 +22,8 @@ type Props = {
   currentDebt: number;
   items: Item[];
   paymentMethods: { code: string; name: string }[];
+  // გაყიდვისას გამოყენებული გადახდის მეთოდი (ნაგულისხმევი დაბრუნებისას)
+  soldWith?: { code: string; name: string } | null;
   sessionId: string | null;
   requestId: string;
 };
@@ -55,14 +57,16 @@ export default function ReturnForm({
   currentDebt,
   items,
   paymentMethods,
+  soldWith = null,
   sessionId,
   requestId,
 }: Props) {
   const [quantities, setQuantities] = useState<Record<string, string>>({});
   const [reason, setReason] = useState("");
   const [method, setMethod] = useState(
-    paymentMethods.find((m) => m.code === "cash")?.code ??
-      paymentMethods[0]?.code ??
+    (soldWith && paymentMethods.find((m) => m.code === soldWith.code)?.code) ||
+      paymentMethods.find((m) => m.code === "cash")?.code ||
+      paymentMethods[0]?.code ||
       "",
   );
 
@@ -258,6 +262,13 @@ export default function ReturnForm({
                 ))}
               </select>
             </label>
+          )}
+
+          {refundCents > 0 && soldWith && (
+            <p className="muted">
+              გაყიდვა გადახდილი იყო: <strong>{soldWith.name}</strong>
+              {method === soldWith.code ? " — ნაგულისხმევად ამავე მეთოდით უბრუნდება, საჭიროების შემთხვევაში შეგიძლიათ შეცვალოთ." : " — თქვენ სხვა მეთოდი აირჩიეთ."}
+            </p>
           )}
 
           {refundCents > 0 && method === "cash" && (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useDeferredValue, useMemo, useRef, useState } from "react";
+import { useDeferredValue, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useFormStatus } from "react-dom";
 import { completeSale, loadCustomerPrices } from "@/app/(pos)/actions";
 
@@ -189,6 +189,51 @@ export default function SaleTerminal({
     }
     return found;
   }, [availableItems, deferredSearch, searchText]);
+
+  // ბარკოდის სკანერი: ზუსტად ერთნაირი კოდის მქონე პროდუქტი პირდაპირ კალათაში ემატება.
+  const bySku = useMemo(() => {
+    const map = new Map<string, CatalogItem[]>();
+    for (const item of availableItems) {
+      const key = (item.sku ?? "").trim().toLowerCase();
+      if (!key) continue;
+      const list = map.get(key);
+      if (list) list.push(item);
+      else map.set(key, [item]);
+    }
+    return map;
+  }, [availableItems]);
+
+  function exactSkuMatch(value: string, requireUnique: boolean): CatalogItem | null {
+    const key = value.trim().toLowerCase();
+    if (!key) return null;
+    const hits = bySku.get(key);
+    if (!hits || hits.length !== 1) return null;
+    if (requireUnique) {
+      // თუ უფრო გრძელი კოდიც იწყება ამავე ტექსტით, ხელით ჩაწერას ვერ ვიგებთ: Enter იქნება საჭირო.
+      for (const other of bySku.keys()) if (other !== key && other.startsWith(key)) return null;
+    }
+    return hits[0];
+  }
+
+  function onSearchChange(value: string) {
+    const hit = exactSkuMatch(value, true);
+    if (hit) {
+      addItem(hit);
+      setSearch("");
+      return;
+    }
+    setSearch(value);
+  }
+
+  function onSearchKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key !== "Enter") return;
+    event.preventDefault(); // სკანერის Enter-მა გაყიდვის ფორმა არ უნდა გააგზავნოს
+    const hit = exactSkuMatch(search, false);
+    if (hit) {
+      addItem(hit);
+      setSearch("");
+    }
+  }
 
   function selectCustomerPrices(id: string) {
     const token = ++priceRequest.current;
@@ -617,9 +662,11 @@ export default function SaleTerminal({
                 type="search"
                 value={search}
                 onChange={(event) =>
-                  setSearch(event.target.value)
+                  onSearchChange(event.target.value)
                 }
-                placeholder="მაგ: ტელევიზორი ან SKU"
+                onKeyDown={onSearchKeyDown}
+                autoFocus
+                placeholder="მაგ: ტელევიზორი ან SKU / დაასკანერეთ ბარკოდი"
                 autoComplete="off"
               />
             </label>
