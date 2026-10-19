@@ -65,13 +65,15 @@ export default async function ProfitPage({ searchParams }: { searchParams: Promi
         </div>
 
         <form method="get" className="profit-range">
-          <Link href={prev} className="button secondary" aria-label="წინა პერიოდი">‹</Link>
           {type !== "all" && <input type="hidden" name="type" value={type} />}
-          <input type="date" name="from" defaultValue={filters.from} aria-label="თარიღიდან" />
-          <span>–</span>
-          <input type="date" name="to" defaultValue={filters.to} aria-label="თარიღამდე" />
-          <button type="submit" className="button primary">გამოყენება</button>
-          <Link href={next} className="button secondary" aria-label="შემდეგი პერიოდი">›</Link>
+          <Link href={prev} className="range-arrow" aria-label="წინა პერიოდი">‹</Link>
+          <span className="range-box">
+            <input type="date" name="from" defaultValue={filters.from} aria-label="თარიღიდან" />
+            <span className="range-dash">—</span>
+            <input type="date" name="to" defaultValue={filters.to} aria-label="თარიღამდე" />
+          </span>
+          <Link href={next} className="range-arrow" aria-label="შემდეგი პერიოდი">›</Link>
+          <button type="submit" className="range-apply">გამოყენება</button>
         </form>
 
         <div className="profit-presets">
