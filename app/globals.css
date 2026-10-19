@@ -1672,3 +1672,9 @@ html {
 @media (max-width: 700px) {
   html { font-size: 84%; }
 }
+
+/* გვერდებზე გადასვლა (ტრანზაქციები) */
+.pager { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-top: 1rem; flex-wrap: wrap; }
+.pager .button { min-height: 2.4rem; padding: 0.4rem 1rem; text-decoration: none; }
+.pager .button.disabled { opacity: 0.45; pointer-events: none; }
+.pager-info { font-weight: 600; color: var(--text-muted); }

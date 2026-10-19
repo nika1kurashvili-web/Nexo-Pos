@@ -22,7 +22,10 @@ type SearchParams = {
   product?: string;
   payment?: string;
   tracking?: string;
+  page?: string;
 };
+
+const PAGE_SIZE = 50;
 
 export default async function SalesPage({
   searchParams,
@@ -41,6 +44,7 @@ export default async function SalesPage({
   const product = params.product?.trim() ?? "";
   const payment = params.payment?.trim() ?? "";
   const tracking = (params.tracking?.trim() ?? "").slice(0, 200);
+  const pageNumber = Math.max(1, Math.floor(Number(params.page)) || 1);
 
   const type =
     params.type === "retail" || params.type === "wholesale"
@@ -147,9 +151,9 @@ export default async function SalesPage({
 
   let query = client
     .from("pos_sales")
-    .select("*")
+    .select("*", { count: "exact" })
     .order("created_at", { ascending: false })
-    .limit(100);
+    .range((pageNumber - 1) * PAGE_SIZE, pageNumber * PAGE_SIZE - 1);
 
   if (saleNumber) {
     const parsedNumber = Number(saleNumber);
@@ -197,6 +201,7 @@ export default async function SalesPage({
    */
   let data: Sale[] | null = null;
   let error: PostgrestError | null = null;
+  let total = 0;
 
   if (relatedSaleIds !== null && relatedSaleIds.length === 0) {
     data = [];
@@ -208,6 +213,7 @@ export default async function SalesPage({
     const result = await query;
     data = result.data;
     error = result.error;
+    total = result.count ?? 0;
   }
 
   /*
@@ -217,6 +223,19 @@ export default async function SalesPage({
   if (tracking && data?.length === 1 && data[0].tracking_code?.trim().toLowerCase() === tracking.toLowerCase()) {
     redirect(`/sales/${data[0].id}`);
   }
+
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const pageHref = (target: number) => {
+    const qs = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+      if (value && key !== "page" && key !== "error" && key !== "saved") qs.set(key, value);
+    }
+    if (target > 1) qs.set("page", String(target));
+    const text = qs.toString();
+    return text ? `/sales?${text}` : "/sales";
+  };
+  const firstShown = total === 0 ? 0 : (pageNumber - 1) * PAGE_SIZE + 1;
+  const lastShown = Math.min(total, pageNumber * PAGE_SIZE);
 
   const returnStatuses = data?.length ? await loadReturnStatuses(client, data.map((sale) => sale.id)) : new Map();
 
@@ -335,7 +354,7 @@ export default async function SalesPage({
       <section className="panel list-panel">
         <h2>ტრანზაქციები</h2>
 
-        <p>ნაჩვენებია მაქსიმუმ 100 შედეგი.</p>
+        <p>ნაჩვენებია {firstShown}–{lastShown} სულ {total} ტრანზაქციიდან.</p>
 
         <div className="table-scroll">
           <table>
@@ -403,6 +422,22 @@ export default async function SalesPage({
             </tbody>
           </table>
         </div>
+
+        {pageCount > 1 && (
+          <nav className="pager" aria-label="გვერდები">
+            {pageNumber > 1 ? (
+              <Link href={pageHref(pageNumber - 1)} className="button secondary">← წინა</Link>
+            ) : (
+              <span className="button secondary disabled" aria-disabled="true">← წინა</span>
+            )}
+            <span className="pager-info">გვერდი {pageNumber} / {pageCount}</span>
+            {pageNumber < pageCount ? (
+              <Link href={pageHref(pageNumber + 1)} className="button secondary">შემდეგი →</Link>
+            ) : (
+              <span className="button secondary disabled" aria-disabled="true">შემდეგი →</span>
+            )}
+          </nav>
+        )}
 
         {!error && !data?.length && (
           <p>მითითებული პირობებით გაყიდვები ვერ მოიძებნა.</p>
