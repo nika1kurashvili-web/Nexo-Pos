@@ -1634,3 +1634,41 @@ td { padding: 0.5rem 0.6rem; }
 .profit-table .th-sort:hover { color: #274bc4; }
 .profit-table td { padding: 0.45rem 0.6rem; font-size: 0.85rem; }
 .profit-wrap .filter-pop { position: fixed; }
+
+/* ===== BPG Nino Mtavruli — ერთიანი ფონტი მთელ საიტზე ===== */
+@font-face {
+  font-family: "BPG Nino Mtavruli";
+  src:
+    local("BPG Nino Mtavruli"),
+    local("BPG Nino Mtavruli Regular"),
+    url("/fonts/bpg-nino-mtavruli.woff2") format("woff2"),
+    url("/fonts/bpg-nino-mtavruli.woff") format("woff"),
+    url("/fonts/bpg-nino-mtavruli.ttf") format("truetype");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root,
+html,
+body {
+  font-family: "BPG Nino Mtavruli", "Noto Sans Georgian", "Segoe UI", system-ui, Arial, sans-serif;
+}
+
+/* ღილაკები, ველები და სიები ბრაუზერის ნაგულისხმევ ფონტს არ იყენებენ */
+button,
+input,
+select,
+textarea,
+optgroup {
+  font-family: inherit;
+}
+
+/* ყველა ზომა rem-შია, ამიტომ ერთი რიცხვით მთელი საიტი პატარავდება (16px → 14px) */
+html {
+  font-size: 87.5%;
+}
+
+@media (max-width: 700px) {
+  html { font-size: 84%; }
+}
