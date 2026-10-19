@@ -1539,3 +1539,13 @@ td { padding: 0.5rem 0.6rem; }
 .filter-pop-actions { display: flex; gap: 0.4rem; }
 .filter-pop-actions .button { flex: 1 1 auto; min-height: 2rem; padding: 0.25rem 0.6rem; font-size: 0.8rem; }
 .filter-pop-row td { background: transparent !important; }
+
+/* დაბრუნების მიზეზის მზა არჩევანი */
+.reason-box { display: grid; gap: 0.5rem; }
+.reason-title { font-weight: 600; font-size: 0.9rem; }
+.reason-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.reason-chip { padding: 0.35rem 0.8rem; border: 1px solid #cfd6e4; border-radius: 999px; background: #fff; color: #33405c; font: inherit; font-size: 0.85rem; cursor: pointer; }
+.reason-chip:hover { border-color: #274bc4; color: #274bc4; }
+.reason-chip.on { background: #274bc4; border-color: #274bc4; color: #fff; }
+.reason-chip.primary-reason:not(.on) { border-color: #b42323; color: #b42323; font-weight: 600; }
+.reason-chip.primary-reason.on { background: #b42323; border-color: #b42323; }

@@ -30,6 +30,9 @@ type Props = {
 const milli = (value: string) => Math.round(Number(value) * 1000);
 const cents = (value: string | number) => Math.round(Number(value) * 100);
 const gel = (valueCents: number) => `${(valueCents / 100).toFixed(2)} ₾`;
+// მზა მიზეზები: ერთი დაჭერით ივსება; „არ ჩაბარდა“ პირველია.
+const NOT_DELIVERED = "არ ჩაბარდა";
+const REASONS = [NOT_DELIVERED, "დეფექტი", "არასწორი ზომა / მოდელი", "კლიენტმა გადაიფიქრა"];
 const qtyPattern = /^\d{1,11}(\.\d{1,3})?$/;
 
 function Submit({ disabled }: { disabled: boolean }) {
@@ -102,6 +105,20 @@ export default function ReturnForm({
 
   const setQty = (id: string, value: string) =>
     setQuantities((prev) => ({ ...prev, [id]: value }));
+
+  // „არ ჩაბარდა“: მიზეზი ივსება და ცარიელი ხაზები მთლიანად (დარჩენილი რაოდენობით) მოინიშნება.
+  function pickReason(value: string) {
+    setReason(value);
+    if (value !== NOT_DELIVERED) return;
+    setQuantities((prev) => {
+      const next = { ...prev };
+      for (const item of items) {
+        const remaining = milli(item.quantity) - milli(item.returnedQuantity);
+        if (remaining > 0 && (next[item.id] ?? "").trim() === "") next[item.id] = String(remaining / 1000);
+      }
+      return next;
+    });
+  }
 
   return (
     <form action={completeReturn} className="panel return-form">
@@ -177,8 +194,30 @@ export default function ReturnForm({
       </div>
 
       <div className="return-bottom">
+        <div className="reason-box">
+          <span className="reason-title">დაბრუნების მიზეზი</span>
+          <div className="reason-chips" role="group" aria-label="მზა მიზეზები">
+            {REASONS.map((r) => (
+              <button
+                key={r}
+                type="button"
+                className={`reason-chip${reason === r ? " on" : ""}${r === NOT_DELIVERED ? " primary-reason" : ""}`}
+                aria-pressed={reason === r}
+                onClick={() => pickReason(r)}
+              >
+                {r}
+              </button>
+            ))}
+            <button
+              type="button"
+              className={`reason-chip${reason !== "" && !REASONS.includes(reason) ? " on" : ""}`}
+              onClick={() => { if (REASONS.includes(reason)) setReason(""); }}
+            >
+              სხვა
+            </button>
+          </div>
         <label>
-          დაბრუნების მიზეზი
+          სხვა მიზეზის შემთხვევაში ჩაწერეთ აქ
           <textarea
             name="reason"
             required
@@ -188,6 +227,7 @@ export default function ReturnForm({
             placeholder="მაგ. დეფექტი, არასწორი ზომა, კლიენტმა გადაიფიქრა"
           />
         </label>
+        </div>
 
         <div className="return-summary">
           <p>
