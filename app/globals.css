@@ -1577,3 +1577,34 @@ td { padding: 0.5rem 0.6rem; }
 .profit-pager { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.6rem; margin-top: 0.7rem; }
 .profit-pager label { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; }
 .profit-pager select { min-height: 2rem; font-size: 0.85rem; }
+
+/* ნავაჭრი / გაყიდვები: კომპაქტური ფილტრები (მაღალი სპეციფიკურობა, რომ საერთო input წესებმა არ გადააჭარბოს) */
+.panel.profit-bar { gap: 0.6rem 1rem; padding: 0.6rem 0.9rem; }
+.panel.profit-bar .profit-range { gap: 0.3rem; }
+.panel.profit-bar .profit-range input[type="date"]:not([type="x"]),
+.panel.profit-bar .profit-range .button {
+  box-sizing: border-box; height: 2rem; min-height: 2rem; padding: 0 0.5rem; font-size: 0.82rem; line-height: 1; border-radius: 0.45rem;
+}
+.panel.profit-bar .profit-range input[type="date"]:not([type="x"]) { width: 8.6rem; }
+.panel.profit-bar .profit-range .button { display: inline-flex; align-items: center; justify-content: center; }
+.panel.profit-bar .profit-range .button.secondary { width: 2rem; padding: 0; font-size: 1.05rem; }
+.panel.profit-bar .profit-tabs a { padding: 0.28rem 0.8rem; font-size: 0.82rem; }
+.panel.profit-bar .reason-chip { padding: 0.25rem 0.7rem; font-size: 0.8rem; }
+
+.profit-table { table-layout: fixed; width: 100%; }
+.profit-table th:first-child, .profit-table td:first-child { width: 24%; }
+.profit-table thead th { padding: 0.4rem 0.45rem; font-size: 0.72rem; white-space: normal; line-height: 1.25; }
+.profit-table .profit-filter-row th { padding: 0.3rem 0.35rem; }
+.profit-table .profit-filter-row input:not([type="checkbox"]):not([type="radio"]) {
+  box-sizing: border-box; display: block; width: 100%; min-width: 0; height: 1.75rem; min-height: 1.75rem;
+  padding: 0 0.4rem; font-size: 0.76rem; line-height: 1; border-radius: 0.4rem; margin: 0 0 0.2rem;
+}
+.profit-table .profit-filter-row .range-pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0.2rem; }
+.profit-table .profit-filter-row .range-pair input:not([type="checkbox"]):not([type="radio"]) { margin: 0; }
+.profit-table td { padding: 0.4rem 0.5rem; font-size: 0.84rem; }
+.profit-table td:first-child strong { overflow-wrap: anywhere; }
+.profit-pager select { box-sizing: border-box; height: 1.9rem; min-height: 1.9rem; padding: 0 0.4rem; font-size: 0.82rem; }
+@media (pointer: coarse) {
+  .panel.profit-bar .profit-range input[type="date"]:not([type="x"]) { font-size: 0.82rem; }
+  .profit-table .profit-filter-row input:not([type="checkbox"]):not([type="radio"]) { font-size: 0.76rem; min-height: 1.75rem; }
+}
