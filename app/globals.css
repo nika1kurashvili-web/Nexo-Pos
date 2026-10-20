@@ -1678,3 +1678,9 @@ html {
 .pager .button { min-height: 2.4rem; padding: 0.4rem 1rem; text-decoration: none; }
 .pager .button.disabled { opacity: 0.45; pointer-events: none; }
 .pager-info { font-weight: 600; color: var(--text-muted); }
+
+/* პროდუქტების ცხრილი: დასახელებისა და კოდის რედაქტირება */
+.products-table .cell-text { width: 100%; text-align: left; }
+.products-table .cell-name { min-width: 14rem; font-weight: 600; }
+.products-table .cell-sku { min-width: 8rem; }
+.products-table td > .muted { font-size: 0.75rem; margin-bottom: 0.15rem; }

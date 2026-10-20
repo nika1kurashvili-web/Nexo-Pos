@@ -105,9 +105,12 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                   const parent = item.kind === "variant" ? images.map.get(`product:${item.product_id}`) ?? null : null;
                   return <ProductImageCell kind={item.kind} id={item.id} url={own ?? parent} inherited={!own && !!parent} extras={images.extras.get(`${item.kind}:${item.id}`) ?? []} />;
                 })()}</td>
-                <td><strong>{item.name}</strong>{item.variant_name && <div className="muted">{item.variant_name}</div>}</td>
+                <td>
+                  {item.variant_name && <div className="muted">{item.name}</div>}
+                  <input form={formId} name="name" defaultValue={item.variant_name ?? item.name} maxLength={200} aria-label={item.variant_name ? "ვარიანტის სახელი" : "დასახელება"} className="cell-input cell-text cell-name" />
+                </td>
                 <td><select form={formId} name="category" defaultValue={item.category ?? ""} aria-label="კატეგორია" className="cell-select"><option value="">—</option>{CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}</select></td>
-                <td>{item.sku ?? "—"}</td>
+                <td><input form={formId} name="sku" defaultValue={item.sku ?? ""} maxLength={100} placeholder="—" aria-label="კოდი" className="cell-input cell-text cell-sku" /></td>
                 <td><span className="cell-field"><input form={formId} name="stock" inputMode="decimal" defaultValue={qty(item.stock)} aria-label="მარაგი" className={`cell-input${stock <= 0 ? " cell-low" : ""}`} /></span></td>
                 <td><span className="cell-field cell-money"><input form={formId} name="cost" inputMode="decimal" defaultValue={plain(item.cost)} placeholder="—" aria-label="შესყიდვის ფასი" className="cell-input" /></span></td>
                 <td><span className="cell-field cell-money"><input form={formId} name="price" inputMode="decimal" defaultValue={plain(item.price ?? 0)} aria-label="გასაყიდი ფასი" className="cell-input" /></span></td>
@@ -118,6 +121,8 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                     <input type="hidden" name="kind" value={item.kind} />
                     <input type="hidden" name="id" value={item.id} />
                     <input type="hidden" name="request_id" value={crypto.randomUUID()} />
+                    <input type="hidden" name="orig_name" value={item.variant_name ?? item.name} />
+                    <input type="hidden" name="orig_sku" value={item.sku ?? ""} />
                     <input type="hidden" name="orig_category" value={item.category ?? ""} />
                     <input type="hidden" name="orig_stock" value={qty(item.stock)} />
                     <input type="hidden" name="orig_cost" value={plain(item.cost)} />

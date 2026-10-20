@@ -62,7 +62,13 @@ export async function saveProduct(form: FormData) {
   const origStock = normalizeDecimal(text(form, "orig_stock"));
   const category = text(form, "category");
   const origCategory = text(form, "orig_category");
+  const name = text(form, "name");
+  const origName = text(form, "orig_name");
+  const sku = text(form, "sku");
+  const origSku = text(form, "orig_sku");
   if (category && !categories.includes(category)) redirect(back(form, "error=category"));
+  if (name !== origName && (!name || name.length > 200)) redirect(back(form, "error=name"));
+  if (sku.length > 100) redirect(back(form, "error=sku"));
   if ((kind !== "product" && kind !== "variant") || !uuidRe.test(id) || !uuidRe.test(requestId)) {
     redirect(back(form, "error=invalid"));
   }
@@ -71,6 +77,17 @@ export async function saveProduct(form: FormData) {
   if (cost !== origCost && !isPrice(cost)) redirect(back(form, "error=cost"));
 
   const client = await rpcClient();
+  if (name !== origName || sku !== origSku) {
+    const { error } = await client.rpc("pos_rename_product", {
+      p_kind: kind, p_id: id,
+      p_name: name !== origName ? name : null,
+      p_sku: sku !== origSku ? sku : null,
+    });
+    if (error) {
+      console.error("[nexo-pos-products] rename", safeAuthError(error));
+      redirect(back(form, `error=${errorCodes[error.message?.trim() ?? ""] ?? "failed"}`));
+    }
+  }
   if (category !== origCategory) {
     const { error } = await client.rpc("pos_set_category", { p_kind: kind, p_id: id, p_category: category || null });
     if (error) {

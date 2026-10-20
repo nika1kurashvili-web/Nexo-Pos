@@ -118,6 +118,7 @@ export type PosFunctions = {
   pos_products_import: { Args: { p_request: string; p_items: Json }; Returns: Json };
   pos_set_category: { Args: { p_kind: string; p_id: string; p_category: string | null }; Returns: undefined };
   pos_set_cost: { Args: { p_kind: string; p_id: string; p_cost: string }; Returns: undefined };
+  pos_rename_product: { Args: { p_kind: string; p_id: string; p_name: string | null; p_sku: string | null }; Returns: undefined };
   pos_update_product: { Args: { p_kind: string; p_id: string; p_price: string | null; p_active: boolean | null }; Returns: undefined };
   pos_inventory_catalog: { Args: Record<string, never>; Returns: InventoryCatalogItem[] };
   pos_create_purchase: { Args: { p_request: string; p_note: string | null; p_items: Json }; Returns: string };
