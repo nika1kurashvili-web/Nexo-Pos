@@ -1684,3 +1684,13 @@ html {
 .products-table .cell-name { min-width: 14rem; font-weight: 600; }
 .products-table .cell-sku { min-width: 8rem; }
 .products-table td > .muted { font-size: 0.75rem; margin-bottom: 0.15rem; }
+
+/* ინვენტარიზაცია: სრულად ჩანს ფანჯარაში, 20 პროდუქტი გვერდზე */
+.data-form.inventory-form { max-width: none; }
+.inventory-table { width: 100%; min-width: 0; table-layout: auto; }
+.inventory-table th, .inventory-table td { white-space: normal; padding: 0.5rem 0.6rem; }
+.inventory-table td:nth-child(1) { white-space: nowrap; }
+.inventory-table td input { min-width: 4.5rem; padding: 0.4rem 0.6rem; }
+.inventory-table td:nth-child(4) { width: 7rem; }
+.inventory-table td:nth-child(6) { min-width: 11rem; }
+.pager .button:disabled { opacity: 0.45; cursor: default; }

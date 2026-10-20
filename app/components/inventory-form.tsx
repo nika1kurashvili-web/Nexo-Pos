@@ -12,7 +12,7 @@ import {
 } from "@/lib/pos/inventory";
 import type { InventoryCatalogItem } from "@/lib/pos/types";
 
-const MAX_ROWS = 200;
+const PAGE_SIZE = 20;
 const fmt = (v: number) => v.toLocaleString("ka-GE", { maximumFractionDigits: 3 });
 
 type Status = "same" | "invalid" | "changed";
@@ -36,6 +36,7 @@ export default function InventoryForm({
   const [query, setQuery] = useState("");
   const [pinned, setPinned] = useState<string | null>(null);
   const [scanTick, setScanTick] = useState(0);
+  const [page, setPage] = useState(0);
   const [bulkReason, setBulkReason] = useState("");
   const [note, setNote] = useState("");
   const [missing, setMissing] = useState(false);
@@ -60,7 +61,6 @@ export default function InventoryForm({
 
   const rows = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    const changedKeys = new Set(changed.map(itemKey));
     const matches = needle
       ? catalog.filter(
           (item) =>
@@ -80,11 +80,14 @@ export default function InventoryForm({
     if (pinned) push(catalog.find((item) => itemKey(item) === pinned));
     for (const item of changed) push(item);
     for (const item of matches) {
-      if (first.length >= MAX_ROWS + changedKeys.size + 1) break;
       push(item);
     }
     return { list: first, total: matches.length };
   }, [catalog, changed, pinned, query]);
+
+  const pageCount = Math.max(1, Math.ceil(rows.list.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount - 1);
+  const visible = rows.list.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
 
   useEffect(() => {
     if (!pinned) return;
@@ -101,6 +104,7 @@ export default function InventoryForm({
       setMissing(false);
       setPinned(itemKey(exact));
       setScanTick((t) => t + 1);
+      setPage(0);
       setQuery("");
     } else if (query.trim()) {
       setMissing(true);
@@ -202,7 +206,7 @@ export default function InventoryForm({
   );
 
   return (
-    <form action={createInventory} className="data-form">
+    <form action={createInventory} className="data-form inventory-form">
       <input type="hidden" name="request_id" value={requestId} />
       <input type="hidden" name="items" value={payload} />
 
@@ -214,6 +218,7 @@ export default function InventoryForm({
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
+              setPage(0);
               setMissing(false);
             }}
             onKeyDown={onScanKey}
@@ -272,7 +277,7 @@ export default function InventoryForm({
           <p className="muted">აქტიური პროდუქტები არ მოიძებნა.</p>
         ) : (
           <div className="table-scroll">
-            <table>
+            <table className="inventory-table">
               <thead>
                 <tr>
                   <th>ბარკოდი</th>
@@ -285,7 +290,7 @@ export default function InventoryForm({
                 </tr>
               </thead>
               <tbody>
-                {rows.list.map((item) => {
+                {visible.map((item) => {
                   const key = itemKey(item);
                   const status = statusOf(item);
                   const diff =
@@ -335,10 +340,14 @@ export default function InventoryForm({
             </table>
           </div>
         )}
-        {rows.total > rows.list.length && (
-          <p className="muted">
-            ნაჩვენებია {rows.list.length} / {rows.total}. დანარჩენის საპოვნელად გამოიყენეთ ძებნა ან სკანერი.
-          </p>
+        {rows.list.length > 0 && (
+          <div className="pager">
+            <button type="button" className="button secondary" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>← წინა</button>
+            <span className="pager-info">
+              {currentPage * PAGE_SIZE + 1}–{Math.min(rows.list.length, (currentPage + 1) * PAGE_SIZE)} / {rows.list.length} · გვერდი {currentPage + 1} / {pageCount}
+            </span>
+            <button type="button" className="button secondary" disabled={currentPage >= pageCount - 1} onClick={() => setPage(currentPage + 1)}>შემდეგი →</button>
+          </div>
         )}
       </section>
 
