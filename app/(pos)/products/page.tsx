@@ -91,11 +91,11 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
 
     <section className="panel">
       {hasActiveFilters(filters) && <p className="muted">ფილტრით ნაჩვენებია {rows.length} პროდუქტი {items.length}-დან.</p>}
-      {rows.length === 0 ? <p className="muted">პროდუქტი ვერ მოიძებნა.</p> : (
+      {(
         <div className="table-scroll">
           <table className="products-table">
             <thead><ProductFilterHeader /></thead>
-            <tbody>{rows.map((item) => {
+            <tbody>{rows.length === 0 && <tr><td colSpan={10} className="muted">პროდუქტი ვერ მოიძებნა. შეცვალეთ ფილტრი სათაურში ან <Link href="/products">გაასუფთავეთ ყველა ფილტრი</Link>.</td></tr>}{rows.map((item) => {
               const formId = `p-${item.kind}-${item.id}`;
               const stock = Number(item.stock);
               const margin = item.cost !== null && item.price !== null ? Number(item.price) - Number(item.cost) : null;
