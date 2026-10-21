@@ -3,6 +3,7 @@
 import { useDeferredValue, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useFormStatus } from "react-dom";
 import { completeSale, loadCustomerPrices } from "@/app/(pos)/actions";
+import "./sale-terminal.css";
 
 type CatalogItem = {
   kind: "product" | "variant";
@@ -67,7 +68,7 @@ const round2 = (value: number) =>
 
 function SaleSubmit({ disabled, children }: { disabled: boolean; children: React.ReactNode }) {
   const { pending } = useFormStatus();
-  return <button type="submit" className="button" disabled={disabled || pending}>
+  return <button type="submit" className="till-cta" disabled={disabled || pending} aria-busy={pending || undefined}>
     {pending ? "ინახება…" : children}
   </button>;
 }
@@ -558,552 +559,552 @@ export default function SaleTerminal({
         validPayments.length > 0
       : Boolean(customerId));
 
+
+  // ჩეკის ჯამები: რამდენი ცალია და რამდენი დააკლდა ფასდაკლებით.
+  const unitCount = cart.reduce((sum, row) => sum + row.quantity, 0);
+  const grossTotal = round2(
+    cart.reduce(
+      (sum, row) => sum + round2(Number(row.unitPrice) * row.quantity),
+      0
+    )
+  );
+  const discountTotal = round2(Math.max(0, grossTotal - total));
+  const gel = (value: number) => value.toFixed(2);
+  const qty = (value: number) => String(Number(value.toFixed(3)));
+
+  const catalogLocked = saleType === "wholesale" && !customerId;
+
   return (
-    <div className="sale-terminal">
-      <section className="panel">
-        <h2>გაყიდვის ტიპი</h2>
-
-        <div className="sale-type-selector">
-          <button
-            type="button"
-            className={
-              saleType === "retail"
-                ? "button"
-                : "button secondary"
-            }
-            onClick={() =>
-              changeSaleType("retail")
-            }
+    <div className="till">
+      <section className="till-catalog" aria-labelledby="till-catalog-title">
+        <div className="till-bar">
+          <div
+            className="till-segment"
+            role="group"
+            aria-label="გაყიდვის ტიპი"
           >
-            საცალო
-          </button>
+            <button
+              type="button"
+              aria-pressed={saleType === "retail"}
+              onClick={() => changeSaleType("retail")}
+            >
+              საცალო
+            </button>
+            <button
+              type="button"
+              aria-pressed={saleType === "wholesale"}
+              onClick={() => changeSaleType("wholesale")}
+            >
+              საბითუმო
+            </button>
+          </div>
 
-          <button
-            type="button"
-            className={
-              saleType === "wholesale"
-                ? "button"
-                : "button secondary"
-            }
-            onClick={() =>
-              changeSaleType("wholesale")
-            }
-          >
-            საბითუმო
-          </button>
-        </div>
-
-        {saleType === "wholesale" && (
-          <>
-            <label>
-              ბიზნეს კლიენტი
+          {saleType === "wholesale" && (
+            <label className="till-field till-customer">
+              <span>ბიზნეს კლიენტი</span>
               <select
                 value={customerId}
-                onChange={(event) =>
-                  changeCustomer(
-                    event.target.value
-                  )
-                }
+                onChange={(event) => changeCustomer(event.target.value)}
               >
-                <option value="">
-                  აირჩიე კლიენტი
-                </option>
-
+                <option value="">აირჩიე კლიენტი</option>
                 {customers.map((customer) => (
-                  <option
-                    key={customer.id}
-                    value={customer.id}
-                  >
+                  <option key={customer.id} value={customer.id}>
                     {customer.name}
-                    {customer.taxCode
-                      ? ` — ${customer.taxCode}`
-                      : ""}
+                    {customer.taxCode ? ` — ${customer.taxCode}` : ""}
                   </option>
                 ))}
               </select>
             </label>
+          )}
+        </div>
 
-            {selectedCustomer && (
-              <p>
-                არჩეული კლიენტი:{" "}
-                <strong>
-                  {selectedCustomer.name}
-                </strong>
-              </p>
-            )}
-
-            {pricesStatus === "loading" && (
-              <p className="muted" role="status">კლიენტის ფასები იტვირთება…</p>
-            )}
-
-            {pricesStatus === "error" && (
-              <p className="notice error" role="alert">
-                კლიენტის ფასები ვერ ჩაიტვირთა.{" "}
-                <button type="button" className="button secondary" onClick={() => selectCustomerPrices(customerId)}>
-                  ხელახლა ცდა
-                </button>
-              </p>
-            )}
-          </>
-        )}
-      
-        <h2>პროდუქტის დამატება</h2>
-
-        {saleType === "wholesale" &&
-        !customerId ? (
-          <p>
-            ჯერ აირჩიე ბიზნეს კლიენტი.
+        {saleType === "wholesale" && pricesStatus === "loading" && (
+          <p className="till-note" role="status">
+            {selectedCustomer?.name ?? "კლიენტის"} ფასები იტვირთება…
           </p>
+        )}
+
+        {saleType === "wholesale" && pricesStatus === "error" && (
+          <p className="till-alert" role="alert">
+            კლიენტის ფასები ვერ ჩაიტვირთა.
+            <button
+              type="button"
+              className="till-link"
+              onClick={() => selectCustomerPrices(customerId)}
+            >
+              ხელახლა ცდა
+            </button>
+          </p>
+        )}
+
+        <h2 id="till-catalog-title" className="till-visually-hidden">
+          პროდუქტის დამატება
+        </h2>
+
+        {catalogLocked ? (
+          <div className="till-empty till-empty-catalog">
+            <strong>ჯერ აირჩიე ბიზნეს კლიენტი</strong>
+            <span>
+              საბითუმოზე ჩანს მხოლოდ ის პროდუქტები, რომლებზეც კლიენტს
+              ინდივიდუალური ფასი აქვს.
+            </span>
+          </div>
         ) : (
           <>
-            <label>
-              ძებნა სახელით ან SKU-ით
+            <label className="till-search">
+              <span className="till-visually-hidden">
+                ძებნა სახელით ან SKU-ით
+              </span>
+              <svg
+                viewBox="0 0 24 24"
+                width="18"
+                height="18"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                aria-hidden="true"
+              >
+                <circle cx="11" cy="11" r="7" />
+                <path d="m20 20-3.5-3.5" />
+              </svg>
               <input
                 type="search"
                 value={search}
-                onChange={(event) =>
-                  onSearchChange(event.target.value)
-                }
+                onChange={(event) => onSearchChange(event.target.value)}
                 onKeyDown={onSearchKeyDown}
                 autoFocus
-                placeholder="მაგ: ტელევიზორი ან SKU / დაასკანერეთ ბარკოდი"
+                placeholder="სახელი, SKU ან დაასკანერეთ ბარკოდი"
                 autoComplete="off"
               />
             </label>
 
-            {saleType === "wholesale" && (
-              <p>
-                ნაჩვენებია მხოლოდ ის პროდუქტები,
-                რომლებზეც ამ კლიენტს
-                ინდივიდუალური საბითუმო ფასი აქვს.
-              </p>
-            )}
+            <p className="till-count">
+              {search.trim()
+                ? results.length >= 30
+                  ? "ნაჩვენებია პირველი 30 შედეგი"
+                  : `ნაპოვნია ${results.length}`
+                : saleType === "wholesale"
+                  ? `${selectedCustomer?.name ?? "კლიენტის"} ფასით: ${availableItems.length} პროდუქტი`
+                  : `${availableItems.length} პროდუქტი · ნაჩვენებია ${Math.min(30, availableItems.length)}`}
+            </p>
 
-            <div className="product-tiles">
-              {results.map((item) => (
-                <button
-                  type="button"
-                  key={`${item.kind}-${item.id}`}
-                  className="product-tile"
-                  onClick={() => addItem(item)}
-                >
-                  <span className="tile-name">{item.name}</span>
-                  {item.variantName && <span className="tile-variant">{item.variantName}</span>}
-                  <span className="tile-photo">
-                    {item.stock != null && (
-                      <span className={`tile-stock ${item.stock <= 0 ? "out" : item.stock <= 3 ? "low" : "ok"}`}>
-                        {item.stock <= 0 ? "მარაგი არ არის" : `მარაგი: ${Number(item.stock.toFixed(3))}`}
-                      </span>
+            <div className="till-tiles">
+              {results.map((item) => {
+                const stockState =
+                  item.stock == null
+                    ? null
+                    : item.stock <= 0
+                      ? "out"
+                      : item.stock <= 3
+                        ? "low"
+                        : "ok";
+                const inCart = cart.find(
+                  (row) => row.kind === item.kind && row.id === item.id
+                );
+
+                return (
+                  <button
+                    type="button"
+                    key={`${item.kind}-${item.id}`}
+                    className="till-tile"
+                    data-in-cart={inCart ? "true" : undefined}
+                    onClick={() => addItem(item)}
+                  >
+                    <span className="till-tile-photo">
+                      {item.imageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={item.imageUrl}
+                          alt=""
+                          loading="lazy"
+                          width={160}
+                          height={160}
+                        />
+                      ) : (
+                        <span className="till-tile-initial" aria-hidden="true">
+                          {item.name.trim().charAt(0)}
+                        </span>
+                      )}
+                      {inCart && (
+                        <span className="till-tile-qty">
+                          {qty(inCart.quantity)}
+                          <span className="till-visually-hidden"> კალათაში</span>
+                        </span>
+                      )}
+                    </span>
+                    <span className="till-tile-name">{item.name}</span>
+                    {item.variantName && (
+                      <span className="till-tile-variant">{item.variantName}</span>
                     )}
-                    {item.imageUrl
-                      // eslint-disable-next-line @next/next/no-img-element
-                      ? <img src={item.imageUrl} alt="" loading="lazy" width={160} height={160} />
-                      : <span className="tile-empty" aria-hidden="true">📷</span>}
-                  </span>
-                  <span className="tile-price">{item.price.toFixed(2)} ₾</span>
-                  {item.sku && <span className="tile-sku">{item.sku}</span>}
-                </button>
-              ))}
+                    <span className="till-tile-foot">
+                      <span className="till-tile-price">
+                        {gel(item.price)}
+                        <small> ₾</small>
+                      </span>
+                      {stockState && (
+                        <span className={`till-stock till-stock-${stockState}`}>
+                          {stockState === "out"
+                            ? "არ არის"
+                            : `${qty(item.stock as number)} ც.`}
+                        </span>
+                      )}
+                    </span>
+                    {item.sku && <span className="till-tile-sku">{item.sku}</span>}
+                  </button>
+                );
+              })}
 
               {!results.length && (
-                <p className="muted">
+                <p className="till-empty till-empty-row">
                   {saleType === "wholesale"
                     ? "ამ კლიენტისთვის შესაბამისი საბითუმო ფასი ვერ მოიძებნა."
-                    : "პროდუქტი ვერ მოიძებნა."}
+                    : search.trim()
+                      ? `„${search.trim()}“ ვერ მოიძებნა.`
+                      : "პროდუქტი ვერ მოიძებნა."}
                 </p>
               )}
             </div>
           </>
         )}
+
+        {cart.length > 0 && (
+          <a href="#till-receipt" className="till-jump">
+            <span>ჩეკი · {qty(unitCount)} ც.</span>
+            <strong>{gel(total)} ₾</strong>
+          </a>
+        )}
       </section>
 
-      <section className="panel">
-        <h2>კალათა</h2>
+      <section
+        id="till-receipt"
+        className="till-receipt"
+        aria-labelledby="till-receipt-title"
+      >
+        <header className="till-receipt-head">
+          <h2 id="till-receipt-title">ჩეკი</h2>
+          <span>
+            {cart.length
+              ? `${cart.length} პოზიცია · ${qty(unitCount)} ც.`
+              : saleType === "wholesale"
+                ? selectedCustomer?.name ?? "საბითუმო"
+                : "საცალო"}
+          </span>
+        </header>
 
         {!cart.length ? (
-          <p>კალათა ცარიელია.</p>
-        ) : (
-          <div className="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>პროდუქტი</th>
-                  <th>რაოდენობა</th>
-                  <th>ფასი</th>
-                  <th>ფასდაკლება %</th>
-                  <th>ჯამი</th>
-                  <th></th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {cart.map((row, index) => {
-                  const finalUnitPrice = round2(
-                    Number(row.unitPrice) *
-                      (1 -
-                        Number(row.discountPercent) /
-                          100)
-                  );
-
-                  const lineTotal = round2(
-                    finalUnitPrice *
-                      row.quantity
-                  );
-
-                  return (
-                    <tr
-                      key={`${row.kind}-${row.id}`}
-                    >
-                      <td>
-                        <strong>
-                          {row.name}
-                        </strong>
-
-                        {row.variantName && (
-                          <div>
-                            {row.variantName}
-                          </div>
-                        )}
-                      </td>
-
-                      <td>
-                        <div className="quantity-control">
-                          <button
-                            type="button"
-                            className="button secondary"
-                            onClick={() =>
-                              changeQuantity(
-                                index,
-                                -1
-                              )
-                            }
-                          >
-                            −
-                          </button>
-
-                          <input
-                            type="number"
-                            min="0.001"
-                            step="1"
-                            value={row.quantity}
-                            onChange={(event) =>
-                              updateItem(
-                                index,
-                                "quantity",
-                                Number(
-                                  event.target
-                                    .value
-                                )
-                              )
-                            }
-                          />
-
-                          <button
-                            type="button"
-                            className="button secondary"
-                            onClick={() =>
-                              changeQuantity(
-                                index,
-                                1
-                              )
-                            }
-                          >
-                            +
-                          </button>
-                        </div>
-                      </td>
-
-                      <td>
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                  placeholder="0.00"
-                  onFocus={(event) => { if (Number(event.currentTarget.value) === 0) event.currentTarget.select(); }}
-                          value={row.unitPrice}
-                          onChange={(event) =>
-                            updateItem(
-                              index,
-                              "unitPrice",
-                              event.target.value
-                            )
-                          }
-                        />
-                      </td>
-
-                      <td>
-                        <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          step="0.01"
-                          placeholder="0.00"
-                          onFocus={(event) => { if (Number(event.currentTarget.value) === 0) event.currentTarget.select(); }}
-                          value={
-                            row.discountPercent
-                          }
-                          onChange={(event) =>
-                            updateItem(
-                              index,
-                              "discountPercent",
-                              event.target.value
-                            )
-                          }
-                        />
-                      </td>
-
-                      <td>
-                        {lineTotal.toFixed(2)} ₾
-                      </td>
-
-                      <td>
-                        <button
-                          type="button"
-                          className="button secondary"
-                          onClick={() =>
-                            removeItem(index)
-                          }
-                        >
-                          წაშლა
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div className="till-empty till-empty-cart">
+            <strong>კალათა ცარიელია</strong>
+            <span>დააჭირეთ პროდუქტს ან დაასკანერეთ ბარკოდი.</span>
           </div>
+        ) : (
+          <ul className="till-lines">
+            {cart.map((row, index) => {
+              const finalUnitPrice = round2(
+                Number(row.unitPrice) *
+                  (1 - Number(row.discountPercent) / 100)
+              );
+              const lineTotal = round2(finalUnitPrice * row.quantity);
+              const discounted = Number(row.discountPercent) > 0;
+
+              return (
+                <li key={`${row.kind}-${row.id}`} className="till-line">
+                  <div className="till-line-top">
+                    <div className="till-line-name">
+                      <strong>{row.name}</strong>
+                      {(row.variantName || row.sku) && (
+                        <span>
+                          {[row.variantName, row.sku].filter(Boolean).join(" · ")}
+                        </span>
+                      )}
+                    </div>
+                    <div className="till-line-total">
+                      <span>
+                        {gel(lineTotal)}
+                        <small> ₾</small>
+                      </span>
+                      {discounted && (
+                        <s>{gel(round2(Number(row.unitPrice) * row.quantity))}</s>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      className="till-icon"
+                      aria-label={`${row.name} — წაშლა`}
+                      title="წაშლა"
+                      onClick={() => removeItem(index)}
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        width="16"
+                        height="16"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                        aria-hidden="true"
+                      >
+                        <path d="M6 6l12 12M18 6 6 18" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  <div className="till-line-controls">
+                    <div className="till-stepper" role="group" aria-label="რაოდენობა">
+                      <button
+                        type="button"
+                        aria-label="ერთით ნაკლები"
+                        onClick={() => changeQuantity(index, -1)}
+                      >
+                        −
+                      </button>
+                      <input
+                        type="number"
+                        min="0.001"
+                        step="1"
+                        aria-label="რაოდენობა"
+                        value={row.quantity}
+                        onChange={(event) =>
+                          updateItem(index, "quantity", Number(event.target.value))
+                        }
+                      />
+                      <button
+                        type="button"
+                        aria-label="ერთით მეტი"
+                        onClick={() => changeQuantity(index, 1)}
+                      >
+                        +
+                      </button>
+                    </div>
+
+                    <label className="till-mini">
+                      <span>ფასი, ₾</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00"
+                        onFocus={(event) => {
+                          if (Number(event.currentTarget.value) === 0)
+                            event.currentTarget.select();
+                        }}
+                        value={row.unitPrice}
+                        onChange={(event) =>
+                          updateItem(index, "unitPrice", event.target.value)
+                        }
+                      />
+                    </label>
+
+                    <label className="till-mini">
+                      <span>ფასდაკლება, %</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        placeholder="0"
+                        onFocus={(event) => {
+                          if (Number(event.currentTarget.value) === 0)
+                            event.currentTarget.select();
+                        }}
+                        value={row.discountPercent}
+                        onChange={(event) =>
+                          updateItem(index, "discountPercent", event.target.value)
+                        }
+                      />
+                    </label>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
         )}
 
-        <div>
-          <strong>
-            სულ: {total.toFixed(2)} ₾
-          </strong>
-        </div>
+        <dl className="till-totals">
+          {discountTotal > 0 && (
+            <>
+              <div>
+                <dt>ფასდაკლებამდე</dt>
+                <dd>{gel(grossTotal)} ₾</dd>
+              </div>
+              <div>
+                <dt>ფასდაკლება</dt>
+                <dd>−{gel(discountTotal)} ₾</dd>
+              </div>
+            </>
+          )}
+          <div className="till-due" data-zero={total === 0 ? "true" : undefined}>
+            <dt>გადასახდელი</dt>
+            <dd>
+              {gel(total)}
+              <small> ₾</small>
+            </dd>
+          </div>
+        </dl>
 
-        <hr />
+        <div className="till-pay">
+          <h3>გადახდა</h3>
 
-        <h2>გადახდა</h2>
-
-        <div className="split-payments">
           {displayedPayments.map((payment) => (
-            <div
-              key={payment.id}
-              className="split-payment-row"
-            >
-              <label>
-                გადახდის მეთოდი
+            <div key={payment.id} className="till-pay-row">
+              <label className="till-field">
+                <span className="till-visually-hidden">გადახდის მეთოდი</span>
                 <select
                   value={payment.method}
                   onChange={(event) =>
-                    updatePayment(
-                      payment.id,
-                      "method",
-                      event.target.value
-                    )
+                    updatePayment(payment.id, "method", event.target.value)
                   }
                 >
-                  <option value="">
-                    აირჩიე
-                  </option>
-
-                  {usableMethods.map(
-                    (method) => (
-                      <option
-                        key={method.code}
-                        value={method.code}
-                      >
-                        {method.name}
-                      </option>
-                    )
-                  )}
+                  <option value="">აირჩიე მეთოდი</option>
+                  {usableMethods.map((method) => (
+                    <option key={method.code} value={method.code}>
+                      {method.name}
+                    </option>
+                  ))}
                 </select>
               </label>
 
-              <label>
-                თანხა
+              <label className="till-field till-amount">
+                <span className="till-visually-hidden">თანხა</span>
                 <input
                   type="number"
                   min="0"
                   step="0.01"
-                          placeholder="0.00"
-                          onFocus={(event) => { if (Number(event.currentTarget.value) === 0) event.currentTarget.select(); }}
-                  value={payment.amount}
+                  placeholder="0.00"
+                  onFocus={(event) => {
+                    if (Number(event.currentTarget.value) === 0)
+                      event.currentTarget.select();
+                  }}
+                  value={payment.amount ?? ""}
                   onChange={(event) =>
-                    updatePayment(
-                      payment.id,
-                      "amount",
-                      event.target.value
-                    )
+                    updatePayment(payment.id, "amount", event.target.value)
                   }
                 />
+                <i aria-hidden="true">₾</i>
               </label>
 
-              {payments.length > 1 && (
+              {payments.length > 1 ? (
                 <button
                   type="button"
-                  className="button secondary"
-                  onClick={() =>
-                    removePayment(payment.id)
-                  }
+                  className="till-icon"
+                  aria-label="გადახდის წაშლა"
+                  title="წაშლა"
+                  onClick={() => removePayment(payment.id)}
                 >
-                  წაშლა
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="16"
+                    height="16"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M6 6l12 12M18 6 6 18" />
+                  </svg>
                 </button>
+              ) : (
+                <span aria-hidden="true" />
               )}
             </div>
           ))}
 
           {canAddPayment && (
-            <button
-              type="button"
-              className="button secondary"
-              onClick={addPayment}
-            >
-              + გადახდის დამატება
+            <button type="button" className="till-link" onClick={addPayment}>
+              + გადახდის გაყოფა
             </button>
           )}
-        </div>
 
-        {duplicatePaymentMethod && (
-          <div className="notice error">
-            ერთი და იგივე გადახდის მეთოდი
-            ორჯერ არის არჩეული.
-          </div>
-        )}
-
-        {overpayment > 0 && (
-          <div className="notice error">
-            გადახდილი თანხა გაყიდვის ჯამს
-            {` ${overpayment.toFixed(2)} ₾-ით `}
-            აღემატება.
-          </div>
-        )}
-
-        <div className="sale-summary">
-          <p>
-            სულ:{" "}
-            <strong>
-              {total.toFixed(2)} ₾
-            </strong>
-          </p>
-
-          <p>
-            გადახდილია:{" "}
-            <strong>
-              {paidTotal.toFixed(2)} ₾
-            </strong>
-          </p>
-
-          <p>
-            {saleType === "wholesale"
-              ? "დავალიანება:"
-              : "დარჩენილია:"}{" "}
-            <strong>
-              {remaining.toFixed(2)} ₾
-            </strong>
-          </p>
-        </div>
-
-        {saleType === "retail" &&
-          remaining > 0 && (
-            <p className="muted">
-              საცალო გაყიდვის დასასრულებლად
-              სრული თანხა უნდა იყოს
-              გადახდილი.
+          {duplicatePaymentMethod && (
+            <p className="till-alert" role="alert">
+              ერთი და იგივე გადახდის მეთოდი ორჯერ არის არჩეული.
             </p>
           )}
 
-        {canBackdate && today && (
-          <label>
-            გაყიდვის თარიღი
-            <input
-              type="date"
-              value={saleDate}
-              max={today}
-              onChange={(event) => setSaleDate(event.target.value)}
-              required
-            />
-            {saleDate !== today && (
-              <span className="muted">
-                გაყიდვა ჩაიწერება არჩეული თარიღით (12:00 საათზე), ხოლო რეალური დაფიქსირების დრო ქვითარზე შეინახება.
-              </span>
+          {overpayment > 0 && (
+            <p className="till-alert" role="alert">
+              გადახდილი თანხა ჯამს {gel(overpayment)} ₾-ით აღემატება.
+            </p>
+          )}
+
+          <dl className="till-totals till-balance">
+            <div>
+              <dt>გადახდილია</dt>
+              <dd>{gel(paidTotal)} ₾</dd>
+            </div>
+            {deferredTotal > 0 && (
+              <div>
+                <dt>მოგვიანებით</dt>
+                <dd>{gel(deferredTotal)} ₾</dd>
+              </div>
             )}
+            <div data-zero={remaining === 0 ? "true" : undefined}>
+              <dt>{saleType === "wholesale" ? "დავალიანება" : "დარჩენილია"}</dt>
+              <dd>{gel(remaining)} ₾</dd>
+            </div>
+          </dl>
+
+          {saleType === "retail" && remaining > 0 && total > 0 && (
+            <p className="till-note">
+              საცალო გაყიდვა სრული გადახდით სრულდება.
+            </p>
+          )}
+        </div>
+
+        <div className="till-extra">
+          <label className="till-field">
+            <span>Tracking კოდი</span>
+            <input
+              value={trackingCode}
+              onChange={(event) => setTrackingCode(event.target.value)}
+              maxLength={200}
+              placeholder="არასავალდებულო"
+            />
           </label>
+
+          {canBackdate && today && (
+            <label className="till-field">
+              <span>გაყიდვის თარიღი</span>
+              <input
+                type="date"
+                value={saleDate}
+                max={today}
+                onChange={(event) => setSaleDate(event.target.value)}
+                required
+              />
+            </label>
+          )}
+        </div>
+
+        {canBackdate && today && saleDate !== today && (
+          <p className="till-note">
+            გაყიდვა ჩაიწერება არჩეული თარიღით (12:00 საათზე), ხოლო რეალური
+            დაფიქსირების დრო ქვითარზე შეინახება.
+          </p>
         )}
 
-        <label>
-          Tracking კოდი
-          <input
-            value={trackingCode}
-            onChange={(event) =>
-              setTrackingCode(
-                event.target.value
-              )
-            }
-            maxLength={200}
-            placeholder="არასავალდებულო"
-          />
-        </label>
-
-        <form action={completeSale}>
-          <input
-            type="hidden"
-            name="request_id"
-            value={requestId}
-          />
-
-          <input
-            type="hidden"
-            name="session_id"
-            value={sessionId}
-          />
-
-          <input
-            type="hidden"
-            name="sale_type"
-            value={saleType}
-          />
-
-          <input
-            type="hidden"
-            name="customer_id"
-            value={customerId}
-          />
-
-          <input
-            type="hidden"
-            name="items"
-            value={payload}
-          />
-
-          <input
-            type="hidden"
-            name="payments"
-            value={paymentPayload}
-          />
-
-          <input
-            type="hidden"
-            name="tracking_code"
-            value={trackingCode}
-          />
-
+        <form action={completeSale} className="till-submit">
+          <input type="hidden" name="request_id" value={requestId} />
+          <input type="hidden" name="session_id" value={sessionId} />
+          <input type="hidden" name="sale_type" value={saleType} />
+          <input type="hidden" name="customer_id" value={customerId} />
+          <input type="hidden" name="items" value={payload} />
+          <input type="hidden" name="payments" value={paymentPayload} />
+          <input type="hidden" name="tracking_code" value={trackingCode} />
           <input
             type="hidden"
             name="sale_date"
             value={canBackdate && saleDate !== today ? saleDate : ""}
           />
 
-          <SaleSubmit
-            disabled={!canSubmit}
-          >
-            {saleType === "retail"
-              ? `გაყიდვის დასრულება — ${total.toFixed(
-                  2
-                )} ₾`
-              : `საბითუმო გაყიდვის დასრულება — ${total.toFixed(
-                  2
-                )} ₾`}
+          <SaleSubmit disabled={!canSubmit}>
+            <span>
+              {saleType === "retail"
+                ? "გაყიდვის დასრულება"
+                : "საბითუმო გაყიდვის დასრულება"}
+            </span>
+            <span className="till-submit-sum">{gel(total)} ₾</span>
           </SaleSubmit>
         </form>
       </section>

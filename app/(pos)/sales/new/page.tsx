@@ -8,6 +8,7 @@ import { Notice } from "@/app/components/pos-forms";
 import { loadImageMap } from "@/lib/pos/product-images-load";
 import { thumbUrl } from "@/lib/pos/product-images";
 import SaleTerminal from "@/app/components/sale-terminal";
+import "@/app/components/sale-terminal.css";
 
 export const dynamic = "force-dynamic";
 
@@ -118,14 +119,14 @@ export default async function NewSalePage({
       <>
         <h1>ახალი გაყიდვა</h1>
 
-        <section className="panel">
+        <section className="till-closed">
           <h2>სალარო დახურულია</h2>
 
           <p>
-            გაყიდვის დასაწყებად ჯერ უნდა გახსნა სალარო.
+            გაყიდვის დასაწყებად ჯერ გახსენით სალარო მთავარ გვერდზე.
           </p>
 
-          <Link href="/" className="button">
+          <Link href="/" className="till-cta">
             სალაროს გახსნა
           </Link>
         </section>
@@ -239,14 +240,12 @@ export default async function NewSalePage({
 
   return (
     <>
-      <div>
+      <div className="till-title">
         <h1>ახალი გაყიდვა</h1>
 
-        <p>
-          <Link href="/sales">
-            ← გაყიდვების ისტორია
-          </Link>
-        </p>
+        <Link href="/sales" className="till-title-link">
+          გაყიდვების ისტორია
+        </Link>
       </div>
 
       {recoveredSale ? (
