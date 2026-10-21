@@ -36,7 +36,7 @@ export default function ProductSearchForm({ q }: { q: string }) {
   return (
     <form
       method="get"
-      className="data-form"
+      className="data-form search-row"
       onSubmit={(event) => {
         event.preventDefault();
         if (timer.current) clearTimeout(timer.current);

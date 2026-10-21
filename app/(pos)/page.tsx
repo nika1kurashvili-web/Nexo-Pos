@@ -54,24 +54,28 @@ export default async function PosHomePage({
 
   return (
     <>
-      <section className="hero">
+      <div className="page-head">
         <div>
-          <p className="eyebrow">მომხმარებელი</p>
           <h1>
             {greeting}, {profile.full_name}
           </h1>
-          <p className="hero-sub">
-            <span className="badge badge-brand">{roleLabels[profile.role]}</span>
-            <span lang="en">Nexo POS</span> — მოლარის სისტემა
+          <p className="page-sub">
+            {roleLabels[profile.role]} ·{" "}
+            {new Date().toLocaleDateString("ka-GE", {
+              timeZone: "Asia/Tbilisi",
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+            })}
           </p>
         </div>
 
         {own ? (
-          <Link href="/sales/new" className="button primary hero-action">
+          <Link href="/sales/new" className="button primary">
             + ახალი გაყიდვა
           </Link>
         ) : null}
-      </section>
+      </div>
 
       <Notice
         {...(await searchParams)}
@@ -102,7 +106,10 @@ export default async function PosHomePage({
                 <header className="register-card-head">
                   <div>
                     <h2>{r.register_name}</h2>
-                    <p className="muted">სალარო გახსნილია</p>
+                    <p className="muted">
+                      {r.cashier_name ?? "—"} · გაიხსნა{" "}
+                      {r.opened_at ? fmt(r.opened_at) : "—"}
+                    </p>
                   </div>
                   <span className="badge badge-success">
                     <span className="dot" aria-hidden="true" />
@@ -110,36 +117,29 @@ export default async function PosHomePage({
                   </span>
                 </header>
 
-                <div className="stat-grid">
-                  <div className="stat stat-info">
-                    <span>ვინ გახსნა</span>
-                    <strong>{r.cashier_name ?? "—"}</strong>
-                  </div>
-                  <div className="stat stat-info">
-                    <span>გახსნის დრო</span>
-                    <strong>{r.opened_at ? fmt(r.opened_at) : "—"}</strong>
-                  </div>
-                  <div className="stat">
-                    <span>საწყისი ნაღდი</span>
-                    <strong>{money(r.opening_cash)}</strong>
-                  </div>
-                  <div className="stat">
-                    <span>ნაღდი გადახდები ამ სესიაში</span>
-                    <strong>{money(r.cash_payments)}</strong>
-                  </div>
-                  <div className="stat">
-                    <span>გაცემული თანხა</span>
-                    <strong>{money(r.cash_withdrawals)}</strong>
-                  </div>
-                  <div className="stat">
-                    <span>ნაღდით დაბრუნებული</span>
-                    <strong>{money(r.cash_refunds ?? 0)}</strong>
-                  </div>
-                  <div className="stat stat-highlight">
-                    <span>მოსალოდნელი ნაღდი სალაროში</span>
-                    <strong>{money(r.expected_cash)}</strong>
-                  </div>
+                <div className="cash-due">
+                  <span>მოსალოდნელი ნაღდი სალაროში</span>
+                  <strong>{money(r.expected_cash)}</strong>
                 </div>
+
+                <dl className="cash-sum">
+                  <div>
+                    <dt>საწყისი ნაღდი</dt>
+                    <dd>{money(r.opening_cash)}</dd>
+                  </div>
+                  <div>
+                    <dt>+ ნაღდი გადახდები</dt>
+                    <dd>{money(r.cash_payments)}</dd>
+                  </div>
+                  <div>
+                    <dt>− გაცემული თანხა</dt>
+                    <dd>{money(r.cash_withdrawals)}</dd>
+                  </div>
+                  <div>
+                    <dt>− ნაღდით დაბრუნებული</dt>
+                    <dd>{money(r.cash_refunds ?? 0)}</dd>
+                  </div>
+                </dl>
 
                 {r.is_own ? (
                   <div className="register-actions">

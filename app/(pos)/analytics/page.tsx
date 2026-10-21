@@ -30,10 +30,10 @@ function Tile({
   tone?: "plain" | "brand" | "green" | "amber" | "rose" | "violet";
 }) {
   return (
-    <div className={`atile atile-${tone}`}>
-      <span className="atile-label">{label}</span>
-      <strong className="atile-value">{value}</strong>
-      {hint && <span className="atile-hint">{hint}</span>}
+    <div className={`kpi kpi-${tone}`}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+      {hint && <small>{hint}</small>}
     </div>
   );
 }
@@ -234,43 +234,56 @@ export default async function AnalyticsPage({
 
       {data && (
         <>
-          <section className="atiles" aria-label="სტატისტიკა">
-            <Tile
-              tone="brand"
-              label="შემოსული თანხა"
-              value={money(net)}
-              hint={
-                num(totals?.returns) > 0
-                  ? `გაყიდვები ${money(num(totals?.gross))} − დაბრუნებები ${money(num(totals?.returns))}`
-                  : "გაყიდვების ჯამი"
-              }
-            />
-            <Tile
-              tone="amber"
-              label="თვითღირებულება"
-              value={cost === 0 && unknownRevenue > 0 ? "—" : money(cost)}
-              hint="ამჟამინდელი შესყიდვის ფასით"
-            />
-            <Tile
-              tone="green"
-              label="მოგება"
-              value={knownRevenue > 0 || cost > 0 ? money(profit) : "—"}
-              hint={margin === null ? undefined : `მარჟა ${margin.toFixed(1)}%`}
-            />
-            <Tile tone="violet" label="გაყიდვების რაოდენობა" value={count(salesCount)} hint={`საშუალო ჩეკი ${money(average)}`} />
-            <Tile label="გაყიდული ერთეული" value={count(num(totals?.quantity))} hint="დაბრუნებების გარეშე" />
-            <Tile
-              tone="rose"
-              label="დაბრუნებები"
-              value={money(num(totals?.returns))}
-              hint={num(totals?.gross) > 0 ? `${((num(totals?.returns) / num(totals?.gross)) * 100).toFixed(1)}% გაყიდვებიდან` : undefined}
-            />
-            {data.received !== null && (
-              <Tile label="ფაქტობრივად მიღებული" value={money(num(data.received))} hint="გადახდები − ფულის დაბრუნება" />
-            )}
-            {data.debt !== null && num(data.debt) > 0 && (
-              <Tile tone="rose" label="დარჩენილი ვალი" value={money(num(data.debt))} hint="საბითუმო გაყიდვებზე" />
-            )}
+          <section className="kpi-split" aria-label="სტატისტიკა">
+            <div className="kpi-strip kpi-lead-box">
+              <Tile
+                tone="brand"
+                label="შემოსული თანხა"
+                value={money(net)}
+                hint={
+                  num(totals?.returns) > 0
+                    ? `გაყიდვები ${money(num(totals?.gross))} − დაბრუნებები ${money(num(totals?.returns))}`
+                    : "გაყიდვების ჯამი"
+                }
+              />
+              {showSplit && (retailPart || wholesalePart) && (() => {
+                const r = num(retailPart?.net);
+                const w = num(wholesalePart?.net);
+                const total = r + w;
+                const rp = total > 0 ? (r / total) * 100 : 50;
+                return (
+                  <div className="lead-split">
+                    <div className="split-bar" role="img" aria-label={`საცალო ${rp.toFixed(0)}%, საბითუმო ${(100 - rp).toFixed(0)}%`}>
+                      <span className="split-retail" style={{ width: `${rp}%` }} />
+                      <span className="split-wholesale" style={{ width: `${100 - rp}%` }} />
+                    </div>
+                    <dl className="split-list">
+                      <div><dt><i className="dot dot-retail" />საცალო · {num(retailPart?.sales_count)}</dt><dd>{money(r)}</dd></div>
+                      <div><dt><i className="dot dot-wholesale" />საბითუმო · {num(wholesalePart?.sales_count)}</dt><dd>{money(w)}</dd></div>
+                    </dl>
+                  </div>
+                );
+              })()}
+            </div>
+            {(() => {
+              const tiles = [
+                <Tile key="cost" label="თვითღირებულება" value={cost === 0 && unknownRevenue > 0 ? "—" : money(cost)} hint="ამჟამინდელი შესყიდვის ფასით" />,
+                <Tile key="profit" tone={profit < 0 ? "rose" : "plain"} label="მოგება" value={knownRevenue > 0 || cost > 0 ? money(profit) : "—"} hint={margin === null ? undefined : `მარჟა ${margin.toFixed(1)}%`} />,
+                <Tile key="count" label="გაყიდვების რაოდენობა" value={count(salesCount)} hint={`საშუალო ჩეკი ${money(average)}`} />,
+                <Tile key="qty" label="გაყიდული ერთეული" value={count(num(totals?.quantity))} hint="დაბრუნებების გარეშე" />,
+                <Tile key="returns" label="დაბრუნებები" value={money(num(totals?.returns))} hint={num(totals?.gross) > 0 ? `${((num(totals?.returns) / num(totals?.gross)) * 100).toFixed(1)}% გაყიდვებიდან` : undefined} />,
+                ...(data.received !== null ? [<Tile key="received" label="ფაქტობრივად მიღებული" value={money(num(data.received))} hint="გადახდები − ფულის დაბრუნება" />] : []),
+                ...(data.debt !== null && num(data.debt) > 0 ? [<Tile key="debt" tone="rose" label="დარჩენილი ვალი" value={money(num(data.debt))} hint="საბითუმო გაყიდვებზე" />] : []),
+              ];
+              // სვეტების რაოდენობა ისე, რომ ბოლო რიგში ცარიელი უჯრა არ დარჩეს
+              const cols = tiles.length > 6 ? 4 : 3;
+              const left = tiles.length % cols;
+              return (
+                <div className="kpi-strip kpi-grid" style={{ "--kpi-cols": cols, "--kpi-last": left ? cols - left + 1 : 1 } as React.CSSProperties}>
+                  {tiles}
+                </div>
+              );
+            })()}
           </section>
 
           {unknownRevenue > 0 && (
@@ -285,29 +298,6 @@ export default async function AnalyticsPage({
             </p>
           )}
 
-          {showSplit && (retailPart || wholesalePart) && (
-            <section className="panel">
-              <h2>საცალო და საბითუმო</h2>
-              <div className="split-bar" role="img" aria-label="საცალო და საბითუმო წილი">
-                {(() => {
-                  const r = num(retailPart?.net);
-                  const w = num(wholesalePart?.net);
-                  const total = r + w;
-                  const rp = total > 0 ? (r / total) * 100 : 50;
-                  return (
-                    <>
-                      <span className="split-retail" style={{ width: `${rp}%` }} />
-                      <span className="split-wholesale" style={{ width: `${100 - rp}%` }} />
-                    </>
-                  );
-                })()}
-              </div>
-              <div className="split-legend">
-                <span><i className="dot dot-retail" /> საცალო: <strong>{money(num(retailPart?.net))}</strong> · {num(retailPart?.sales_count)} გაყიდვა</span>
-                <span><i className="dot dot-wholesale" /> საბითუმო: <strong>{money(num(wholesalePart?.net))}</strong> · {num(wholesalePart?.sales_count)} გაყიდვა</span>
-              </div>
-            </section>
-          )}
 
           <section className="panel">
             <h2>გაყიდვები კვირის დღეების მიხედვით</h2>
@@ -342,27 +332,39 @@ export default async function AnalyticsPage({
           <section className="panel">
             <h2>ტოპ პროდუქტები</h2>
             <div className="table-scroll">
-              <table>
+              <table className="ledger-table">
                 <thead>
                   <tr>
-                    <th>ბარკოდი</th>
+                    <th className="num">#</th>
                     <th>პროდუქტი</th>
-                    <th>რაოდენობა</th>
-                    <th>თანხა</th>
+                    <th className="num">რაოდენობა</th>
+                    <th className="num">თანხა</th>
+                    <th className="share-col"><span className="sr-only">წილი</span></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {data.top_products.map((item) => (
-                    <tr key={`${item.sku ?? ""}-${item.name}`}>
-                      <td>{item.sku || "—"}</td>
-                      <td>{item.name}</td>
-                      <td>{count(num(item.quantity))}</td>
-                      <td>{money(num(item.net))}</td>
-                    </tr>
-                  ))}
+                  {data.top_products.map((item, index) => {
+                    const topNet = num(data.top_products[0]?.net) || 1;
+                    return (
+                      <tr key={`${item.sku ?? ""}-${item.name}`}>
+                        <td className="num muted">{index + 1}</td>
+                        <td>
+                          <span className="cell-two">
+                            {item.name}
+                            <small>{item.sku || "—"}</small>
+                          </span>
+                        </td>
+                        <td className="num">{count(num(item.quantity))}</td>
+                        <td className="num"><strong>{money(num(item.net))}</strong></td>
+                        <td className="share-col">
+                          <span className="share-bar" style={{ width: `${Math.max(2, (num(item.net) / topNet) * 100)}%` }} />
+                        </td>
+                      </tr>
+                    );
+                  })}
                   {!data.top_products.length && (
                     <tr>
-                      <td colSpan={4}>მონაცემი არ არის.</td>
+                      <td colSpan={5} className="muted">ამ პერიოდში გაყიდული პროდუქტი არ არის.</td>
                     </tr>
                   )}
                 </tbody>

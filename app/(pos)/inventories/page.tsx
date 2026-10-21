@@ -42,30 +42,39 @@ export default async function InventoriesPage({
       )}
 
       <section className="panel list-panel">
+        <div className="list-head">
+          <h2>{(count ?? 0).toLocaleString("ka-GE")} ინვენტარიზაცია</h2>
+          {rows.length > 0 && <span className="muted">ბოლო: {new Date(rows[0].created_at).toLocaleDateString("ka-GE", { timeZone: "Asia/Tbilisi" })}</span>}
+        </div>
         {rows.length === 0 ? (
-          <p className="muted">ინვენტარიზაცია ჯერ არ ჩატარებულა. დააჭირეთ „დამატება“-ს.</p>
+          <p className="empty-box">ინვენტარიზაცია ჯერ არ ჩატარებულა. დააჭირეთ „დამატება“-ს.</p>
         ) : (
           <div className="table-scroll">
-            <table>
+            <table className="ledger-table">
               <thead>
                 <tr>
                   <th>№</th>
                   <th>თარიღი</th>
                   <th>ვინ გააკეთა</th>
-                  <th>შესწორებები</th>
+                  <th className="num">შესწორებები</th>
                   <th>შენიშვნა</th>
-                  <th />
+                  <th><span className="sr-only">მოქმედება</span></th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((row) => (
                   <tr key={row.id}>
-                    <td>{row.inventory_number}</td>
-                    <td>{new Date(row.created_at).toLocaleString("ka-GE", { timeZone: "Asia/Tbilisi" })}</td>
+                    <td><Link href={`/inventories/${row.id}`} className="row-id">#{row.inventory_number}</Link></td>
+                    <td>
+                      <span className="cell-two">
+                        {new Date(row.created_at).toLocaleDateString("ka-GE", { timeZone: "Asia/Tbilisi" })}
+                        <small>{new Date(row.created_at).toLocaleTimeString("ka-GE", { timeZone: "Asia/Tbilisi", hour: "2-digit", minute: "2-digit" })}</small>
+                      </span>
+                    </td>
                     <td>{row.actor_name}</td>
-                    <td>{row.items_count}</td>
-                    <td>{row.note ?? ""}</td>
-                    <td><Link href={`/inventories/${row.id}`}>გახსნა</Link></td>
+                    <td className="num">{row.items_count}</td>
+                    <td>{row.note ? row.note : <span className="muted">—</span>}</td>
+                    <td className="row-action"><Link href={`/inventories/${row.id}`} className="row-link">გახსნა</Link></td>
                   </tr>
                 ))}
               </tbody>
@@ -73,7 +82,7 @@ export default async function InventoriesPage({
           </div>
         )}
         {pages > 1 && (
-          <div className="filter-actions">
+          <div className="pager">
             {page > 1 && <Link className="button secondary" href={`/inventories?page=${page - 1}`}>← წინა</Link>}
             <span className="muted">გვერდი {page} / {pages}</span>
             {page < pages && <Link className="button secondary" href={`/inventories?page=${page + 1}`}>შემდეგი →</Link>}

@@ -61,30 +61,39 @@ export default async function PurchasesPage({
       )}
 
       <section className="panel list-panel">
+        <div className="list-head">
+          <h2>{(count ?? 0).toLocaleString("ka-GE")} შესყიდვა</h2>
+          {rows.length > 0 && <span className="muted">ჯამი ამ გვერდზე: {money(rows.reduce((sum, row) => sum + Number(row.total), 0))}</span>}
+        </div>
         {rows.length === 0 ? (
-          <p className="muted">შესყიდვები ჯერ არ არის. დააჭირეთ „დამატება“-ს.</p>
+          <p className="empty-box">შესყიდვები ჯერ არ არის. დააჭირეთ „დამატება“-ს.</p>
         ) : (
           <div className="table-scroll">
-            <table>
+            <table className="ledger-table">
               <thead>
                 <tr>
                   <th>№</th>
                   <th>თარიღი</th>
                   <th>ვინ გააკეთა</th>
                   <th>რა შეიძინა</th>
-                  <th>ჯამი</th>
+                  <th className="num">ჯამი</th>
                   <th>შენიშვნა</th>
-                  <th />
+                  <th><span className="sr-only">მოქმედება</span></th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((row) => (
                   <tr key={row.id}>
-                    <td>{row.purchase_number}</td>
-                    <td>{new Date(row.created_at).toLocaleString("ka-GE", { timeZone: "Asia/Tbilisi" })}</td>
+                    <td><Link href={`/purchases/${row.id}`} className="row-id">#{row.purchase_number}</Link></td>
+                    <td>
+                      <span className="cell-two">
+                        {new Date(row.created_at).toLocaleDateString("ka-GE", { timeZone: "Asia/Tbilisi" })}
+                        <small>{new Date(row.created_at).toLocaleTimeString("ka-GE", { timeZone: "Asia/Tbilisi", hour: "2-digit", minute: "2-digit" })}</small>
+                      </span>
+                    </td>
                     <td>{row.actor_name}</td>
                     <td>
-                      <details>
+                      <details className="row-details">
                         <summary>{row.items_count} პოზიცია</summary>
                         <ul>
                           {(itemsByPurchase.get(row.id) ?? []).map((item) => (
@@ -96,9 +105,9 @@ export default async function PurchasesPage({
                         </ul>
                       </details>
                     </td>
-                    <td>{money(row.total)}</td>
-                    <td>{row.note ?? ""}</td>
-                    <td><Link href={`/purchases/${row.id}`}>გახსნა</Link></td>
+                    <td className="num"><strong>{money(row.total)}</strong></td>
+                    <td>{row.note ? row.note : <span className="muted">—</span>}</td>
+                    <td className="row-action"><Link href={`/purchases/${row.id}`} className="row-link">გახსნა</Link></td>
                   </tr>
                 ))}
               </tbody>
@@ -106,7 +115,7 @@ export default async function PurchasesPage({
           </div>
         )}
         {pages > 1 && (
-          <div className="filter-actions">
+          <div className="pager">
             {page > 1 && <Link className="button secondary" href={`/purchases?page=${page - 1}`}>← წინა</Link>}
             <span className="muted">გვერდი {page} / {pages}</span>
             {page < pages && <Link className="button secondary" href={`/purchases?page=${page + 1}`}>შემდეგი →</Link>}

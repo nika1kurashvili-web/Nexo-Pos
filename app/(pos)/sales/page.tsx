@@ -250,7 +250,7 @@ export default async function SalesPage({
       />
 
       <section className="panel filter-panel">
-        <h2>ტრანზაქციების ძებნა</h2>
+        <h2 className="sr-only">ტრანზაქციების ძებნა</h2>
 
         <LiveFilterForm className="data-form sales-filters">
           <label>
@@ -352,73 +352,87 @@ export default async function SalesPage({
       </section>
 
       <section className="panel list-panel">
-        <h2>ტრანზაქციები</h2>
-
-        <p>ნაჩვენებია {firstShown}–{lastShown} სულ {total} ტრანზაქციიდან.</p>
+        <div className="list-head">
+          <h2>{total.toLocaleString("ka-GE")} ტრანზაქცია</h2>
+          {total > 0 && (
+            <span className="muted">
+              ნაჩვენებია {firstShown}–{lastShown}
+            </span>
+          )}
+        </div>
 
         <div className="table-scroll">
-          <table>
+          <table className="ledger-table">
             <thead>
               <tr>
                 <th>№</th>
                 <th>თარიღი</th>
                 <th>მოლარე</th>
-                <th>ტიპი</th>
                 <th>კლიენტი</th>
                 <th>თრექინგი</th>
-                <th>სულ</th>
-                <th>გადახდილი</th>
-                <th>დავალიანება</th>
+                <th className="num">სულ</th>
+                <th className="num">გადახდილი</th>
+                <th className="num">დავალიანება</th>
                 <th>დაბრუნება</th>
-                <th></th>
+                <th><span className="sr-only">მოქმედება</span></th>
               </tr>
             </thead>
 
             <tbody>
-              {data?.map((sale) => (
-                <tr key={sale.id}>
-                  <td>#{sale.sale_number}</td>
+              {data?.map((sale) => {
+                const created = new Date(sale.created_at);
+                const debt = Number(sale.debt_amount);
 
-                  <td>
-                    {new Date(
-                      sale.created_at
-                    ).toLocaleString("ka-GE", { timeZone: "Asia/Tbilisi" })}
-                  </td>
+                return (
+                  <tr key={sale.id}>
+                    <td>
+                      <Link href={`/sales/${sale.id}`} className="row-id">
+                        #{sale.sale_number}
+                      </Link>
+                    </td>
 
-                  <td>{sale.cashier_name}</td>
+                    <td>
+                      <span className="cell-two">
+                        {created.toLocaleDateString("ka-GE", { timeZone: "Asia/Tbilisi" })}
+                        <small>
+                          {created.toLocaleTimeString("ka-GE", { timeZone: "Asia/Tbilisi", hour: "2-digit", minute: "2-digit" })}
+                        </small>
+                      </span>
+                    </td>
 
-                  <td>
-                    {sale.sale_type === "retail"
-                      ? "საცალო"
-                      : "საბითუმო"}
-                  </td>
+                    <td>{sale.cashier_name}</td>
 
-                  <td>
-                    {sale.customer_name ?? "საცალო კლიენტი"}
-                  </td>
+                    <td>
+                      {sale.sale_type === "wholesale" ? (
+                        <span className="cell-two">
+                          {sale.customer_name ?? "—"}
+                          <small>საბითუმო</small>
+                        </span>
+                      ) : (
+                        <span className="muted">საცალო</span>
+                      )}
+                    </td>
 
-                  <td>{sale.tracking_code ?? "—"}</td>
+                    <td>{sale.tracking_code ? <span className="code">{sale.tracking_code}</span> : <span className="muted">—</span>}</td>
 
-                  <td>
-                    <strong>{money(sale.total)}</strong>
-                  </td>
+                    <td className="num">
+                      <strong>{money(sale.total)}</strong>
+                    </td>
 
-                  <td>{money(sale.paid_total)}</td>
+                    <td className="num">{money(sale.paid_total)}</td>
 
-                  <td>{money(sale.debt_amount)}</td>
+                    <td className={debt > 0 ? "num text-neg" : "num muted"}>{money(sale.debt_amount)}</td>
 
-                  <td><ReturnStatusBadge status={returnStatuses.get(sale.id) ?? "none"} /></td>
+                    <td><ReturnStatusBadge status={returnStatuses.get(sale.id) ?? "none"} /></td>
 
-                  <td>
-                    <Link
-                      href={`/sales/${sale.id}`}
-                      className="button secondary"
-                    >
-                      დეტალები
-                    </Link>
-                  </td>
-                </tr>
-              ))}
+                    <td className="row-action">
+                      <Link href={`/sales/${sale.id}`} className="row-link">
+                        დეტალები
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -440,7 +454,7 @@ export default async function SalesPage({
         )}
 
         {!error && !data?.length && (
-          <p>მითითებული პირობებით გაყიდვები ვერ მოიძებნა.</p>
+          <p className="empty-box">მითითებული პირობებით გაყიდვები ვერ მოიძებნა.</p>
         )}
       </section>
     </>

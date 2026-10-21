@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/auth/server";
 import { posClient } from "@/lib/pos/server";
 import { addDays, parseFilters, tbilisiToday, toRpcArgs } from "@/lib/pos/analytics";
-import { toProfitRows } from "@/lib/pos/profit";
+import { toProfitRows, totalsOf } from "@/lib/pos/profit";
 import ProfitTable from "@/app/components/profit-table";
 
 export const dynamic = "force-dynamic";
@@ -31,6 +31,8 @@ export default async function ProfitPage({ searchParams }: { searchParams: Promi
   const { data, error } = await client.rpc("pos_sales_analytics_products", toRpcArgs(filters));
   if (error) console.error("[profit] rpc failed:", error.code, error.message);
   const rows = toProfitRows(data ?? []);
+  const totals = totalsOf(rows);
+  const gel = (value: number) => `${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₾`;
 
   const span = dayDiff(filters.from, filters.to);
   const link = (patch: Partial<{ from: string; to: string; type: string }>) => {
@@ -83,8 +85,17 @@ export default async function ProfitPage({ searchParams }: { searchParams: Promi
         </div>
       </section>
 
+      {!error && data !== null && (
+        <section className="kpi-strip" aria-label={`ჯამი ${filters.from} — ${filters.to}`}>
+          <div className="kpi-lead"><span>ჯამური თანხა</span><strong>{gel(totals.revenue)}</strong><small>{filters.from} — {filters.to}</small></div>
+          <div><span>შესყიდვის ჯამი</span><strong>{gel(totals.cost)}</strong>{totals.unknownCount > 0 && <small>{totals.unknownCount} პროდუქტს ფასი არ აქვს</small>}</div>
+          <div><span>ფასნამატი</span><strong className={totals.profit < 0 ? "text-neg" : undefined}>{gel(totals.profit)}</strong>{totals.markupPct !== null && <small>{totals.markupPct.toFixed(1)}% შესყიდვის ფასზე</small>}</div>
+          <div><span>გაყიდული ერთეული</span><strong>{totals.quantity.toLocaleString("en-US", { maximumFractionDigits: 3 })}</strong><small>{rows.length} პროდუქტი</small></div>
+        </section>
+      )}
+
       <section className="panel list-panel">
-        <p>პერიოდი: {filters.from} — {filters.to}. რაოდენობა დაბრუნებების გამოკლებით. შესყიდვის ფასად მიმდინარე შესყიდვის ფასი მოქმედებს; ვისაც არ აქვს, მათი ფასნამატი ჩანს „—“.</p>
+        <p className="small">რაოდენობა დაბრუნებების გამოკლებით. შესყიდვის ფასად მიმდინარე შესყიდვის ფასი მოქმედებს; ვისაც არ აქვს, მათი ფასნამატი ჩანს „—“.</p>
         <ProfitTable rows={rows} period={`${filters.from}_${filters.to}`} />
       </section>
     </>

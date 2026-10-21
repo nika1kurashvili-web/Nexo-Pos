@@ -1,0 +1,503 @@
+/* =========================================================
+   Nexo POS — „ledger“ სტილის ფენა (იტვირთება globals.css-ის შემდეგ)
+   ფერი მხოლოდ მონაცემზე: მთავარი ციფრი, სტატუსი, ერთი მთავარი ღილაკი.
+   ჩარჩო (მენიუ, ზედა ზოლი, პანელები) — ნაცრისფერი და მელანი.
+   ========================================================= */
+
+:root {
+  --ground: #f4f6fb;
+  --surface: #ffffff;
+  --raised: #f8f9fa;
+  --well: #f3f4f6;
+  --active-fill: #e6e8ec;
+  --line: #e5e7eb;
+  --rule: #eef0f2;
+  --control: #d1d5db;
+  --ink: #111418;
+  --muted-ink: #5f6368;
+  --primary-fill: #1d1f20;
+  --hue: #274bc4;
+  --hue-soft: rgba(39, 75, 196, 0.16);
+  --pos-bg: #dcfae5; --pos-ink: #04250e; --pos-text: #247b50;
+  --neg-bg: #ffedea; --neg-ink: #831c1e; --neg-text: #b42323;
+  --warn-bg: #fffbeb; --warn-ink: #92400e;
+  --r-card: 8px; --r-control: 6px; --r-chip: 4px;
+
+  /* ძველი ცვლადები ახალ მნიშვნელობებზე, რომ დანარჩენი გვერდებიც ერთ სტილში მოვიდეს */
+  --bg: var(--ground);
+  --surface-soft: var(--raised);
+  --border: var(--line);
+  --border-strong: var(--control);
+  --text: var(--ink);
+  --text-muted: var(--muted-ink);
+  --brand: var(--hue);
+  --brand-dark: #1d3ca5;
+  --brand-soft: #eef1f8;
+  --shadow-sm: none;
+  --shadow-md: 0 8px 24px rgba(17, 20, 24, 0.12);
+  --radius: var(--r-card);
+}
+
+body { background: var(--ground); color: var(--ink); }
+p, .muted { color: var(--muted-ink); }
+.small { font-size: max(12px, 0.875rem); }
+.sr-only {
+  position: absolute !important; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.text-neg { color: var(--neg-text) !important; }
+.text-warn { color: var(--warn-ink) !important; }
+.code { font-variant-numeric: tabular-nums; letter-spacing: 0.01em; }
+:focus-visible { outline: 2px solid var(--hue); outline-offset: 2px; }
+
+/* ---------- ჩარჩო: ზედა ზოლი და მენიუ ---------- */
+.app-header {
+  background: var(--ground);
+  border-bottom: 1px solid var(--line);
+  box-shadow: none;
+  padding-block: 0.6rem;
+}
+.app-header .brand { color: var(--ink); font-weight: 700; letter-spacing: -0.02em; font-size: 1.3rem; }
+.account-details strong { font-weight: 600; }
+.account-details span { color: var(--muted-ink); }
+
+.sidebar {
+  background: var(--ground);
+  border-right: 1px solid var(--line);
+  box-shadow: none;
+  padding: 1rem 0.625rem;
+}
+.sidebar nav { gap: 0.125rem; }
+.sidebar-group { gap: 0.125rem; }
+.sidebar .sidebar-link {
+  min-height: 2.5rem; padding: 0.45rem 0.75rem; gap: 0.6rem;
+  border-radius: var(--r-control); box-shadow: none;
+  color: #3c4043; font-weight: 500; background: transparent;
+}
+.sidebar .sidebar-link .nav-icon { color: var(--muted-ink); stroke-width: 1.6; flex: none; }
+.sidebar .sidebar-link:hover { background: #eceef2; color: var(--ink); }
+.sidebar .sidebar-link.active { background: var(--active-fill); color: var(--ink); font-weight: 600; box-shadow: none; }
+.sidebar .sidebar-link.active .nav-icon { color: var(--ink); }
+.sidebar .sidebar-primary,
+.sidebar .sidebar-primary.active {
+  margin: 0.25rem 0 0.5rem; background: var(--primary-fill); color: #fff; box-shadow: none; font-weight: 600;
+}
+.sidebar .sidebar-primary .nav-icon,
+.sidebar .sidebar-primary.active .nav-icon { color: #fff; }
+.sidebar .sidebar-primary:hover { background: #000; color: #fff; }
+.sidebar-admin-group { border-top: 1px solid var(--line); margin-top: 0.75rem; padding-top: 0.75rem; }
+.sidebar-section-title {
+  padding: 0 0.75rem 0.375rem; color: var(--muted-ink);
+  font-size: max(12px, 0.875rem); font-weight: 500; letter-spacing: 0; text-transform: none;
+}
+
+/* ---------- სათაური ---------- */
+.main-content h1 { font-size: 1.625rem; font-weight: 600; line-height: 1.25; letter-spacing: -0.015em; margin: 0 0 1rem; color: var(--ink); }
+.analytics-head,
+.page-head {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 0.75rem 1.5rem; margin-bottom: 1.25rem;
+}
+.analytics-head h1, .page-head h1 { margin: 0; }
+.analytics-head > div:not(.analytics-tools) { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.page-sub { margin-top: 0.25rem; font-size: max(13px, 0.9375rem); color: var(--muted-ink); }
+
+/* ---------- პანელები ---------- */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  box-shadow: none;
+  padding: 1.25rem;
+}
+.panel + .panel, .panel + .kpi-strip, .kpi-strip + .panel { margin-top: 1rem; }
+.panel h2 { font-size: 1.125rem; font-weight: 600; margin: 0 0 0.75rem; color: var(--ink); }
+.panel > details > summary { font-weight: 600; color: var(--ink); margin: 0; }
+.panel > details[open] > summary { margin-bottom: 0.75rem; }
+
+.list-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.25rem 1rem; margin-bottom: 0.5rem; }
+.list-head h2 { margin: 0 !important; }
+.list-head .muted { font-size: max(12px, 0.875rem); }
+.list-panel > p:first-child { margin-bottom: 0.5rem; }
+
+.empty-box {
+  margin: 0.5rem 0 0; padding: 1rem 1.125rem; border: 1px dashed var(--control); border-radius: var(--r-card);
+  color: var(--muted-ink); font-size: max(13px, 0.9375rem);
+}
+
+/* ---------- ღილაკები ---------- */
+.button {
+  min-height: 2.5rem; padding: 0 1rem; gap: 0.4rem;
+  border-radius: var(--r-control); font-weight: 600; font-size: max(13px, 0.9375rem);
+  box-shadow: none; text-decoration: none;
+}
+.button.primary, .primary.button { margin-top: 0; background: var(--primary-fill); color: #fff; border-color: var(--primary-fill); box-shadow: none; }
+.button.primary:hover:not(:disabled) { background: #000; }
+.button.secondary { background: var(--surface); color: var(--ink); border-color: var(--control); box-shadow: none; }
+.button.secondary:hover:not(:disabled) { background: var(--raised); border-color: #9ca3af; }
+.button:disabled, .button.disabled { opacity: 1; background: var(--well); color: #6b6b6b; border-color: var(--line); cursor: not-allowed; }
+.btn-sm, .button.btn-sm { min-height: 2rem; padding: 0 0.7rem; font-size: max(12px, 0.875rem); }
+
+.row-link {
+  padding: 0; border: 0; background: none; color: var(--ink); font: inherit;
+  font-size: max(13px, 0.9375rem); font-weight: 600; white-space: nowrap;
+  text-decoration: underline; text-decoration-color: var(--control); text-underline-offset: 3px; cursor: pointer;
+}
+.row-link:hover { text-decoration-color: currentColor; }
+td a.row-link, td a.row-id { color: var(--ink); text-decoration: none; }
+td a.row-link { text-decoration: underline; text-decoration-color: var(--control); }
+td a.row-id { font-weight: 600; font-variant-numeric: tabular-nums; }
+td a.row-id:hover { color: var(--hue); }
+
+/* ---------- ველები ---------- */
+.data-form label, .inline-form label, .login-form label { font-size: max(12px, 0.875rem); font-weight: 500; color: var(--muted-ink); gap: 0.375rem; }
+.data-form input, .data-form select, .data-form textarea,
+.inline-form input, .inline-form select, .login-form input {
+  min-height: 2.5rem; padding: 0.45rem 0.7rem; border: 1px solid var(--control); border-radius: var(--r-control);
+  background: var(--surface); color: var(--ink); font-size: max(14px, 1rem);
+}
+.data-form textarea { min-height: 4.5rem; }
+.data-form input:hover, .data-form select:hover, .data-form textarea:hover { border-color: #9ca3af; }
+.data-form input:focus, .data-form select:focus, .data-form textarea:focus,
+.inline-form input:focus, .inline-form select:focus, .login-form input:focus {
+  outline: none; border-color: var(--hue); box-shadow: 0 0 0 3px var(--hue-soft);
+}
+.data-form input::placeholder, .data-form textarea::placeholder { color: #6b6b6b; }
+.filter-actions { gap: 0.5rem; }
+.report-filters .filter-actions { grid-column: 1 / -1; flex-wrap: wrap; }
+.notice { margin: 0 0 1rem; }
+
+/* ---------- ცხრილები ---------- */
+.table-scroll { border: 0; border-radius: 0; background: transparent; margin: 0.5rem 0 0; }
+table { font-size: max(13px, 0.9375rem); }
+th {
+  background: transparent; color: var(--muted-ink);
+  font-size: max(12px, 0.8125rem); font-weight: 500; letter-spacing: 0; text-transform: none;
+  border-bottom: 1px solid var(--line); padding: 0.55rem 0.75rem; white-space: nowrap;
+}
+td { border-bottom: 1px solid var(--rule); padding: 0.6rem 0.75rem; vertical-align: middle; }
+.ledger-table th:first-child, .ledger-table td:first-child { padding-left: 0; }
+.ledger-table th:last-child, .ledger-table td:last-child { padding-right: 0; }
+tbody tr:hover { background: #fafbfc; }
+tbody tr:nth-child(even) { background: transparent; }
+td a { color: var(--ink); text-decoration: none; }
+td a:hover { color: var(--hue); }
+th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+td strong { font-weight: 600; }
+td.row-action { text-align: right; width: 1%; }
+
+.cell-two { display: grid; gap: 0.1rem; line-height: 1.35; }
+.cell-two small { color: var(--muted-ink); font-size: max(12px, 0.8125rem); }
+
+.ledger-table td { height: 3.25rem; }
+
+.row-details summary { cursor: pointer; margin: 0; color: var(--ink); font-weight: 500; list-style-position: inside; }
+.row-details summary::marker { color: var(--muted-ink); }
+.row-details ul { margin: 0.5rem 0 0.25rem; padding-left: 1.1rem; color: var(--muted-ink); font-size: max(12px, 0.875rem); line-height: 1.6; }
+
+.pager { display: flex; align-items: center; justify-content: flex-end; gap: 0.75rem; margin-top: 1rem; }
+.pager .button { min-height: 2.25rem; }
+.pager .pager-info, .pager .muted { color: var(--muted-ink); font-weight: 500; font-size: max(13px, 0.9375rem); }
+
+/* ---------- შეტყობინებები და ნიშნები ---------- */
+.notice { border-radius: var(--r-control); border: 1px solid transparent; border-left-width: 1px; font-size: max(13px, 0.9375rem); padding: 0.7rem 0.9rem; }
+.notice.success { background: var(--pos-bg); color: var(--pos-ink); border-color: #b7ebc8; }
+.notice.error { background: var(--neg-bg); color: var(--neg-ink); border-color: #f6c9c3; }
+.notice.info { background: var(--well); color: var(--ink); border-color: var(--line); }
+
+.badge {
+  display: inline-flex; align-items: center; gap: 0.35rem; flex: none; white-space: nowrap;
+  min-height: 1.4rem; padding: 0 0.5rem; border-radius: 999px; border: 0;
+  font-size: max(12px, 0.8125rem); font-weight: 500; line-height: 1;
+}
+.badge-success { background: var(--pos-bg); color: var(--pos-ink); }
+.badge .dot { width: 0.4rem; height: 0.4rem; margin: 0; background: #2f9e5b; box-shadow: none; }
+.badge-neutral { background: var(--well); color: var(--muted-ink); }
+.badge-return-partial { background: var(--warn-bg); color: var(--warn-ink); }
+.badge-return-full { background: var(--neg-bg); color: var(--neg-ink); }
+.badge-warn { background: var(--neg-bg); color: var(--neg-ink); }
+
+/* ---------- ციფრების ზოლი (KPI) ---------- */
+.kpi-strip {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card);
+  overflow: hidden; margin-bottom: 1rem;
+}
+.kpi-strip > div {
+  display: grid; align-content: start; gap: 0.3rem; padding: 0.95rem 1.25rem;
+  margin: -1px 0 0 -1px; border-left: 1px solid var(--line); border-top: 1px solid var(--line); /* the strip clips the outer ones */
+}
+.kpi-strip > div > span { font-size: max(12px, 0.875rem); color: var(--muted-ink); }
+.kpi-strip > div > strong { font-size: 1.5rem; font-weight: 600; letter-spacing: -0.015em; line-height: 1.2; color: var(--ink); font-variant-numeric: tabular-nums; }
+.kpi-strip > div > small { font-size: max(12px, 0.8125rem); color: var(--muted-ink); line-height: 1.4; }
+.kpi-strip > .kpi-lead > strong,
+.kpi-strip > .kpi-brand > strong { color: var(--hue); }
+.kpi-strip > .kpi-rose > strong { color: var(--neg-text); }
+.kpi-split { display: grid; grid-template-columns: minmax(15rem, 1fr) minmax(0, 3fr); gap: 1rem; margin-bottom: 1rem; }
+.kpi-split > .kpi-strip { margin: 0; }
+.kpi-lead-box { grid-template-columns: 1fr; }
+.kpi-lead-box > div { align-content: start; }
+.kpi-lead-box > div > strong { font-size: 2rem; }
+.kpi-grid { grid-template-columns: repeat(var(--kpi-cols, 3), minmax(0, 1fr)); }
+.kpi-grid > div:last-child { grid-column: span var(--kpi-last, 1); }
+
+/* ---------- მთავარი გვერდი: სალაროები ---------- */
+.section-title { margin: 0 0 0.75rem; font-size: 1.125rem; font-weight: 600; color: var(--ink); }
+.register-grid { gap: 1rem; }
+.register-card { padding: 1.25rem; gap: 1rem; }
+.register-card.own { border-color: var(--line); box-shadow: inset 0 3px 0 var(--hue); } /* taste-skill-ignore: marks the cashier's own register */
+.register-card-head h2 { font-size: 1.125rem; margin: 0 0 0.2rem; }
+.register-card-head p { font-size: max(13px, 0.9375rem); }
+
+.cash-due { display: grid; gap: 0.2rem; }
+.cash-due span { font-size: max(13px, 0.9375rem); color: var(--muted-ink); }
+.cash-due strong { font-size: 2rem; font-weight: 650; letter-spacing: -0.02em; line-height: 1.15; color: var(--ink); font-variant-numeric: tabular-nums; }
+.register-card.own .cash-due strong { color: var(--hue); }
+
+.cash-sum { margin: 0; padding: 0.5rem 0.875rem; background: var(--raised); border-radius: var(--r-card); }
+.cash-sum > div { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; padding: 0.35rem 0; }
+.cash-sum > div + div { border-top: 1px solid var(--rule); }
+.cash-sum dt { color: var(--muted-ink); font-size: max(13px, 0.9375rem); }
+.cash-sum dd { margin: 0; font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.register-actions { gap: 0.5rem; }
+.register-actions .data-form { background: var(--raised); border-color: var(--line); border-radius: var(--r-card); }
+.close-register { border-top: 1px solid var(--rule); padding-top: 0.25rem; }
+.close-register summary { color: var(--muted-ink); font-weight: 500; }
+.close-register summary:hover { color: var(--neg-text); }
+.register-card .notice.info { margin: 0; }
+
+.stat { background: var(--raised); border: 0; border-radius: var(--r-card); box-shadow: none; }
+.stat span { font-size: max(12px, 0.875rem); }
+.stat strong { font-size: 1.125rem; font-weight: 600; }
+.stat-highlight, .stat-info { background: var(--raised); border: 0; }
+.stat-highlight strong { color: var(--ink); }
+
+/* ---------- ტრანზაქციების ფილტრი ---------- */
+.filter-panel { padding-bottom: 1rem; }
+.sales-filters { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.75rem 1rem; max-width: none; margin-top: 0; }
+.sales-filter-actions { grid-column: 1 / -1; display: flex; gap: 0.5rem; }
+.sales-filter-actions .button { flex: none; }
+
+/* ---------- პროდუქტები ---------- */
+.products-table { font-size: max(13px, 0.875rem); }
+.products-table th { font-size: max(12px, 0.8125rem); padding: 0.5rem 0.4rem; }
+.products-table td { padding: 0.45rem 0.4rem; }
+.products-table tbody tr:nth-child(even) { background: transparent; }
+.products-table .cell-input, .products-table .cell-select {
+  background: transparent; border: 1px solid transparent; border-radius: var(--r-control);
+  min-height: 2.125rem; color: var(--ink); font-variant-numeric: tabular-nums;
+}
+.products-table .cell-input:hover, .products-table .cell-select:hover { background: var(--surface); border-color: var(--control); }
+.products-table .cell-input:focus { background: var(--surface); border-color: var(--hue); box-shadow: 0 0 0 3px var(--hue-soft); }
+.products-table .cell-name { font-weight: 500; min-width: 13rem; }
+.products-table .cell-field .cell-input { text-align: right; }
+.products-table .cell-money::after { color: var(--muted-ink); font-weight: 500; }
+.products-table .cell-low { background: var(--neg-bg); color: var(--neg-ink); }
+.products-table .row-inactive td { opacity: 0.6; }
+.products-table .row-actions { white-space: nowrap; text-align: right; }
+.products-table .row-actions .row-link { font-size: max(12px, 0.875rem); margin-left: 0.5rem; color: var(--muted-ink); }
+
+.img-cell { gap: 0.3rem; }
+.img-thumb { border-radius: var(--r-control); border-color: var(--line); background: var(--surface); object-fit: contain; }
+.img-empty { background: var(--well); color: transparent; border: 1px dashed var(--control); }
+.img-btn.button.secondary { min-height: 1.75rem; padding: 0 0.5rem; font-size: max(12px, 0.8125rem); font-weight: 500; }
+.img-gallery summary { color: var(--muted-ink); font-size: max(12px, 0.8125rem); }
+
+.filter-head th button, .th-sort { color: inherit; font-weight: 500; }
+.filter-btn { color: var(--muted-ink); background: transparent; border-radius: var(--r-chip); }
+.filter-btn.on, th.has-filter { color: var(--hue); }
+.filter-pop { border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--shadow-md); background: var(--surface); }
+
+/* ---------- ანალიტიკა ---------- */
+.preset-links { gap: 0; padding: 3px; background: #e9ebee; border-radius: var(--r-card); }
+.preset { padding: 0.35rem 0.85rem; border: 1px solid transparent; border-radius: var(--r-control); background: transparent; color: #3c4043; font-weight: 500; }
+.preset:hover { background: var(--surface); border-color: var(--control); color: var(--ink); }
+.icon-button { width: 2.5rem; height: 2.5rem; border: 1px solid var(--control); border-radius: var(--r-control); background: var(--surface); color: var(--ink); }
+.icon-button:hover { background: var(--raised); border-color: #9ca3af; }
+
+.report-filters { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.75rem 1rem; max-width: none; align-items: end; }
+.type-picker { border-color: var(--control); border-radius: var(--r-control); min-height: 2.5rem; padding: 0.35rem 0.75rem; }
+.type-picker legend { font-weight: 500; color: var(--muted-ink); }
+.type-picker .check { font-weight: 500; color: var(--ink); }
+.type-picker .check input, label.check input { accent-color: var(--primary-fill); }
+
+.split-bar { height: 0.75rem; gap: 2px; background: transparent; border-radius: var(--r-chip); }
+.split-retail, .dot-retail { background: var(--hue); }
+.split-wholesale, .dot-wholesale { background: #b8bec8; }
+.split-bar > span { border-radius: 2px; }
+.split-legend { color: var(--muted-ink); font-size: max(13px, 0.9375rem); }
+.split-legend strong { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+.weekday-chart { gap: 0.75rem; }
+.weekday-count { font-size: max(13px, 0.9375rem); font-weight: 600; font-variant-numeric: tabular-nums; }
+.weekday-track { height: 9rem; background: transparent; border-radius: 0; border-bottom: 1px solid var(--line); }
+.weekday-bar { background: #c9ced6; border-radius: 3px 3px 0 0; }
+.weekday-top .weekday-bar { background: var(--hue); }
+.weekday-name { font-size: max(13px, 0.9375rem); font-weight: 500; }
+.weekday-money { font-size: max(12px, 0.8125rem); font-variant-numeric: tabular-nums; }
+
+.share-col { width: 22%; min-width: 6rem; }
+.share-bar { display: block; height: 3px; border-radius: 2px; background: #c9ced6; }
+tbody tr:first-child .share-bar { background: var(--ink); }
+
+.how-it-works summary { color: var(--ink); }
+
+/* ---------- გაყიდვები (ნავაჭრი) ---------- */
+.profit-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1rem; }
+.profit-tabs { display: inline-flex; gap: 3px; padding: 3px; background: #e9ebee; border-radius: var(--r-card); border: 0; }
+.profit-tabs a { padding: 0.4rem 0.9rem; border-radius: var(--r-control); border: 1px solid transparent; color: #3c4043; font-weight: 500; background: transparent; }
+.profit-tabs a:hover { color: var(--ink); }
+.profit-tabs a.on { background: var(--surface); border-color: var(--control); color: var(--ink); font-weight: 600; box-shadow: none; }
+.profit-range { display: inline-flex; align-items: center; gap: 0.375rem; }
+.range-box { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0 0.5rem; min-height: 2.5rem; border: 1px solid var(--control); border-radius: var(--r-control); background: var(--surface); }
+.range-box input { border: 0; background: transparent; font: inherit; color: var(--ink); min-height: 0; padding: 0.25rem; }
+.range-arrow { display: inline-grid; place-items: center; width: 2.5rem; height: 2.5rem; border: 1px solid var(--control); border-radius: var(--r-control); background: var(--surface); color: var(--ink); font-size: 1.1rem; }
+.range-arrow:hover { background: var(--raised); }
+.range-apply { min-height: 2.5rem; padding: 0 1rem; border: 0; border-radius: var(--r-control); background: var(--primary-fill); color: #fff; font: inherit; font-weight: 600; box-shadow: none; }
+.range-apply:hover { background: #000; }
+.profit-presets { display: flex; flex-wrap: wrap; gap: 0.375rem; margin-left: auto; }
+.reason-chip { padding: 0.3rem 0.75rem; border: 1px solid var(--control); border-radius: 999px; background: var(--surface); color: #3c4043; font-size: max(12px, 0.875rem); font-weight: 500; box-shadow: none; }
+.reason-chip:hover { border-color: #9ca3af; color: var(--ink); background: var(--raised); }
+
+.profit-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; margin: 0.75rem 0 0.25rem; }
+.pct-toggle { display: inline-flex; gap: 2px; padding: 2px; background: #e9ebee; border-radius: var(--r-control); border: 0; }
+.pct-toggle button { min-width: 2.25rem; min-height: 2rem; border: 1px solid transparent; border-radius: 5px; background: transparent; color: #3c4043; font-weight: 600; }
+.pct-toggle button.on { background: var(--surface); border-color: var(--control); color: var(--ink); }
+.profit-table th { white-space: normal; vertical-align: bottom; }
+.profit-table td .muted { font-size: max(12px, 0.8125rem); }
+.profit-table td.neg { color: var(--neg-text); }
+.profit-total td { border-top: 1px solid var(--line); border-bottom: 0; font-weight: 600; background: var(--raised); }
+.profit-pager { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem; margin-top: 1rem; }
+.profit-pager label { display: inline-flex; align-items: center; gap: 0.5rem; color: var(--muted-ink); font-size: max(13px, 0.9375rem); }
+.profit-pager select { min-height: 2.25rem; border: 1px solid var(--control); border-radius: var(--r-control); padding: 0 0.5rem; background: var(--surface); }
+
+/* ---------- პლანშეტი და ტელეფონი ---------- */
+@media (max-width: 1100px) {
+  .sales-filters, .report-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kpi-split { grid-template-columns: minmax(0, 1fr); }
+  .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kpi-grid > div:last-child { grid-column: auto; }
+  .kpi-grid > div:nth-child(odd):last-child { grid-column: 1 / -1; }
+  .profit-presets { margin-left: 0; }
+}
+
+@media (max-width: 760px) {
+  .app-header { padding: 0.6rem 1rem; }
+  .sidebar { background: var(--ground); border-right: 0; border-bottom: 1px solid var(--line); box-shadow: none; padding: 0.5rem 1rem; }
+  .sidebar-admin-group { border-top: 0; margin-top: 0; padding-top: 0; }
+  .sidebar .sidebar-link.active { box-shadow: none; }
+  .sidebar .sidebar-primary { margin: 0; }
+  .main-content { padding: 1rem 1rem 2rem; }
+  .main-content h1 { font-size: 1.375rem; }
+  .panel { padding: 1rem; }
+  .sales-filters, .report-filters { grid-template-columns: minmax(0, 1fr); }
+  .kpi-strip:not(.kpi-grid) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kpi-strip:not(.kpi-grid) > .kpi-lead { grid-column: 1 / -1; }
+  .kpi-strip > div { padding: 0.75rem 1rem; }
+  .kpi-strip > div > strong { font-size: 1.25rem; }
+  .kpi-lead-box > div > strong { font-size: 1.625rem; }
+  .cash-due strong { font-size: 1.625rem; }
+  .profit-range { flex-wrap: wrap; }
+  .share-col { display: none; }
+  .ledger-table th:first-child, .ledger-table td:first-child { padding-left: 0.25rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button, .row-link, .sidebar .sidebar-link { transition: none; }
+}
+
+/* ---------- ძველი „list-panel“ / „profit“ წესების გადაფარვა (იგივე სპეციფიკურობით, მოგვიანებით) ---------- */
+.list-panel, .filter-panel { padding: 1.25rem; border-radius: var(--r-card); }
+.list-panel h2, .filter-panel h2 { font-size: 1.125rem; margin-bottom: 0.75rem; }
+.list-panel > p { font-size: max(13px, 0.9375rem); color: var(--muted-ink); margin: 0 0 0.5rem; }
+.list-panel .table-scroll { border: 0; border-radius: 0; }
+.list-panel table { font-size: max(13px, 0.9375rem); border-collapse: collapse; }
+.list-panel th { font-size: max(12px, 0.8125rem); letter-spacing: 0; text-transform: none; background: var(--surface); color: var(--muted-ink); padding: 0.55rem 0.75rem; font-weight: 500; border-bottom: 1px solid var(--line); }
+.list-panel td { padding: 0.55rem 0.75rem; border-top: 0; border-bottom: 1px solid var(--rule); }
+.list-panel th:first-child, .list-panel td:first-child { padding-left: 0; }
+.list-panel th:last-child, .list-panel td:last-child { padding-right: 0; }
+.list-panel tbody tr:nth-child(even) td { background: transparent; }
+.list-panel tbody tr:hover td { background: #fafbfc; }
+.list-panel td:first-child { font-weight: 400; }
+.list-panel td strong { font-weight: 600; }
+.list-panel td a:not(.button) { padding: 0; border-radius: 0; background: none; color: var(--ink); font-weight: 600; display: inline; }
+.list-panel td a.row-link:not(.button) { text-decoration: underline; text-decoration-color: var(--control); text-underline-offset: 3px; }
+.list-panel td a:not(.button):hover { color: var(--hue); text-decoration-color: currentColor; }
+.list-panel details summary { font-weight: 500; font-size: max(13px, 0.9375rem); }
+.list-panel details ul { font-size: max(12px, 0.875rem); color: var(--muted-ink); }
+.list-panel .filter-actions, .list-panel .pager { margin-top: 1rem; }
+.filter-panel .sales-filters { gap: 0.75rem 1rem; }
+.filter-panel .sales-filters label { font-size: max(12px, 0.875rem); font-weight: 500; color: var(--muted-ink); gap: 0.375rem; }
+.filter-panel .sales-filters input, .filter-panel .sales-filters select { min-height: 2.5rem; font-size: max(14px, 1rem); padding: 0.4rem 0.7rem; border-radius: var(--r-control); }
+.analytics-head { margin-bottom: 1.25rem; }
+
+.products-table .filter-head th, .products-table .filter-head th.has-filter { background: var(--surface); }
+.products-table .filter-head th.has-filter { color: var(--hue); }
+
+.panel.profit-bar { padding: 0.75rem 1rem; border-radius: var(--r-card); gap: 0.75rem 1rem; }
+.profit-range .range-box { height: 2.5rem; border-color: var(--control); border-radius: var(--r-control); }
+.profit-range .range-box:focus-within { border-color: var(--hue); box-shadow: 0 0 0 3px var(--hue-soft); }
+.profit-range .range-box input[type="date"]:not([type="x"]) { height: 2.25rem; color: var(--ink); font-size: max(13px, 0.9375rem); }
+.profit-range .range-dash { color: var(--muted-ink); }
+.profit-range .range-arrow { width: 2.5rem; height: 2.5rem; border-color: var(--control); border-radius: var(--r-control); color: var(--ink); }
+.profit-range .range-arrow:hover { border-color: #9ca3af; color: var(--ink); background: var(--raised); }
+.profit-range .range-apply { height: 2.5rem; border-radius: var(--r-control); background: var(--primary-fill); font-size: max(13px, 0.9375rem); }
+.profit-range .range-apply:hover { background: #000; }
+.profit-tabs { padding: 3px; background: #e9ebee; border-radius: var(--r-card); gap: 3px; }
+.panel.profit-bar .profit-tabs a, .profit-tabs a { padding: 0.4rem 0.9rem; border-radius: var(--r-control); font-size: max(13px, 0.9375rem); color: #3c4043; }
+.profit-tabs a.on { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: none; border-color: var(--control); }
+.panel.profit-bar .reason-chip, .profit-presets .reason-chip { padding: 0.3rem 0.75rem; font-size: max(12px, 0.875rem); }
+.profit-table .filter-head th, .profit-table .filter-head th.has-filter { background: var(--surface); padding: 0.55rem 0.6rem; font-size: max(12px, 0.8125rem); color: var(--muted-ink); }
+.profit-table .filter-head th.has-filter .th-sort { color: var(--hue); }
+.profit-table .th-sort { font-weight: 500; }
+.profit-table .th-sort:hover { color: var(--ink); }
+.profit-table td { padding: 0.55rem 0.6rem; font-size: max(13px, 0.9375rem); }
+.profit-table th.num .th-inner, .profit-table thead th:not(:first-child) .th-inner { justify-content: flex-end; width: 100%; }
+.profit-table thead th:not(:first-child) { text-align: right; }
+.profit-pager select { height: 2.25rem; min-height: 2.25rem; font-size: max(13px, 0.9375rem); }
+
+/* ---------- პროდუქტები: ძებნა ერთ ხაზზე, ფოტოს უჯრა ---------- */
+.search-row.data-form { display: flex; flex-wrap: wrap; align-items: end; gap: 0.5rem; max-width: none; margin-top: 0; }
+.search-row.data-form > label { flex: 1 1 22rem; max-width: 36rem; }
+.search-row.data-form > div { display: flex; align-items: center; gap: 0.5rem; }
+.panel:has(> .search-row) > p { margin-top: 0.625rem; }
+
+.products-table .img-cell { display: flex; align-items: center; gap: 0.375rem; flex-wrap: nowrap; max-width: none; min-width: 0; position: relative; }
+.img-main { padding: 0; border: 0; background: none; border-radius: var(--r-control); cursor: pointer; flex: none; line-height: 0; }
+.img-main:hover .img-thumb { border-color: #9ca3af; }
+.img-cell.is-busy .img-main { opacity: 0.5; cursor: progress; }
+.products-table .img-thumb { width: 40px; height: 40px; }
+.img-empty { display: grid; place-items: center; color: var(--muted-ink); }
+.img-gallery summary { font-size: max(12px, 0.8125rem); color: var(--muted-ink); white-space: nowrap; }
+.img-gallery[open] .img-gallery-grid {
+  position: absolute; z-index: 6; top: calc(100% + 0.25rem); left: 0; width: max-content; max-width: 22rem;
+  padding: 0.625rem; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--shadow-md);
+}
+.img-error { font-size: max(12px, 0.8125rem); color: var(--neg-text); }
+.products-table td:has(.cell-name) { min-width: 15rem; }
+.products-table .cell-name { width: 100%; }
+
+/* ანალიტიკა: საცალო/საბითუმო წილი მთავარი ციფრის ქვეშ */
+.kpi-lead-box { display: flex; flex-direction: column; }
+.kpi-lead-box > .kpi { border: 0; margin: 0; padding-bottom: 0.5rem; }
+.lead-split { padding: 0.25rem 1.25rem 1rem; margin-top: auto; }
+.lead-split .split-bar { margin: 0 0 0.625rem; }
+.split-list { margin: 0; display: grid; gap: 0.25rem; }
+.split-list > div { display: flex; justify-content: space-between; gap: 0.75rem; font-size: max(12px, 0.875rem); }
+.split-list dt { color: var(--muted-ink); display: inline-flex; align-items: center; gap: 0.375rem; }
+.split-list dt .dot { margin: 0; width: 0.5rem; height: 0.5rem; }
+.split-list dd { margin: 0; font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* პროდუქტები: ტელეფონზეც 12px-ზე პატარა ტექსტი არ იყოს */
+.products-table, .products-table td, .products-table .cell-input, .products-table .cell-select { font-size: max(13px, 0.875rem); }
+.products-table .row-actions .button.btn-sm { font-size: max(12px, 0.8125rem); min-height: 2rem; padding: 0 0.6rem; }
+.products-table td .muted, .products-table td > .muted { font-size: max(12px, 0.8125rem); }
+.products-table th { font-size: max(12px, 0.8125rem); }
+
+/* ბლოკებს შორის ერთი და იგივე დაშორება */
+.panel + .kpi-split, .panel + .kpi-strip, .notice + .panel, .notice + .kpi-strip, .notice + .kpi-split { margin-top: 1rem; }
+.notice.info, .notice.error, .notice.success { margin: 0 0 1rem; }
+.kpi-split + .notice { margin-top: 0; }
+details.panel.how-it-works { padding: 1rem 1.25rem; }
+details.panel.how-it-works > summary { margin: 0; }

@@ -84,9 +84,17 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
       </details>
     </section>
 
+    <section className="kpi-strip" aria-label="მარაგი">
+      <div><span>აქტიური პროდუქტი</span><strong>{active.length}</strong></div>
+      <div><span>მანქანა</span><strong>{carCount}</strong></div>
+      <div><span>ტექნიკა</span><strong>{techCount}</strong></div>
+      <div><span>კატეგორიის გარეშე</span><strong className={noneCount > 0 ? "text-warn" : "muted"}>{noneCount}</strong></div>
+      <div className="kpi-lead"><span>მარაგის ღირებულება, შესყიდვის ფასით</span><strong>{money(stockValue)}</strong></div>
+    </section>
+
     <section className="panel">
       <ProductSearchForm q={q} />
-      <p className="muted">აქტიური პროდუქტი: {active.length} (მანქანა: {carCount}, ტექნიკა: {techCount}{noneCount > 0 && <>, კატეგორიის გარეშე: <strong>{noneCount}</strong></>}). მარაგის ღირებულება შესყიდვის ფასით: <strong>{money(stockValue)}</strong>. რაოდენობის შეცვლა ინახება როგორც ინვენტარიზაცია („ხელით შესწორება“).</p>
+      <p className="muted small">რაოდენობის შეცვლა ინახება როგორც ინვენტარიზაცია („ხელით შესწორება“).</p>
     </section>
 
     <section className="panel">
@@ -114,8 +122,8 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                 <td><span className="cell-field"><input form={formId} name="stock" inputMode="decimal" defaultValue={qty(item.stock)} aria-label="მარაგი" className={`cell-input${stock <= 0 ? " cell-low" : ""}`} /></span></td>
                 <td><span className="cell-field cell-money"><input form={formId} name="cost" inputMode="decimal" defaultValue={plain(item.cost)} placeholder="—" aria-label="შესყიდვის ფასი" className="cell-input" /></span></td>
                 <td><span className="cell-field cell-money"><input form={formId} name="price" inputMode="decimal" defaultValue={plain(item.price ?? 0)} aria-label="გასაყიდი ფასი" className="cell-input" /></span></td>
-                <td>{margin === null ? "—" : money(margin)}</td>
-                <td>{item.active ? "აქტიური" : "გაუქმებული"}</td>
+                <td className={margin === null ? "num muted" : margin < 0 ? "num text-neg" : "num"}>{margin === null ? "—" : money(margin)}</td>
+                <td>{item.active ? <span className="muted">აქტიური</span> : <span className="badge badge-neutral">გაუქმებული</span>}</td>
                 <td className="row-actions">
                   <form id={formId} action={saveProduct}>
                     <input type="hidden" name="kind" value={item.kind} />
@@ -129,8 +137,8 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                     <input type="hidden" name="orig_price" value={plain(item.price ?? 0)} />
                     <input type="hidden" name="active" value={item.active ? "1" : "0"} />
                     <input type="hidden" name="qs" value={qs} />
-                    <button type="submit" className="button primary">შენახვა</button>{" "}
-                    <button type="submit" formAction={toggleProduct} className="button secondary">{item.active ? "გაუქმება" : "აღდგენა"}</button>
+                    <button type="submit" className="button secondary btn-sm">შენახვა</button>{" "}
+                    <button type="submit" formAction={toggleProduct} className="row-link">{item.active ? "გაუქმება" : "აღდგენა"}</button>
                   </form>
                 </td>
               </tr>;
