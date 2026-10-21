@@ -23,6 +23,6 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
         {data?.map((c) => <tr key={c.id}><td><Link href={`/customers/${c.id}`}>{c.name}</Link></td><td>{c.tax_code ?? "—"}</td><td>{c.active ? "აქტიური" : "გამორთული"}</td></tr>)}
       </tbody></table></div>{!error && !data?.length && <p>{q ? "ასეთი კლიენტი ვერ მოიძებნა." : "კლიენტები ჯერ არ არის დამატებული."}</p>}
     </section>
-    <section className="panel"><h2>ახალი კლიენტი</h2><form action={saveCustomer} className="data-form"><CustomerFields /><SaveButton>დამატება</SaveButton></form></section>
+    <section className="panel"><details><summary><strong>+ ახალი კლიენტი</strong></summary><form action={saveCustomer} className="data-form"><CustomerFields /><SaveButton>დამატება</SaveButton></form></details></section>
   </>;
 }
