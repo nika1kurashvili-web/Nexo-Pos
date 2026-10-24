@@ -1694,3 +1694,17 @@ html {
 .inventory-table td:nth-child(4) { width: 7rem; }
 .inventory-table td:nth-child(6) { min-width: 11rem; }
 .pager .button:disabled { opacity: 0.45; cursor: default; }
+
+/* ტრანზაქციები: ჩამოსაშლელი სტრიქონი პროდუქტებით */
+.sales-expand-bar { display: flex; justify-content: flex-end; margin-bottom: 0.5rem; }
+.sales-expand-bar .button { min-height: 2.2rem; padding: 0.3rem 0.9rem; }
+.sales-table .expand-btn { display: inline-flex; align-items: center; justify-content: center; width: 1.8rem; height: 1.8rem; border: 1px solid #d5dbe8; border-radius: 0.5rem; background: #fff; color: #46526b; cursor: pointer; padding: 0; }
+.sales-table .expand-btn:hover { border-color: #274bc4; color: #274bc4; }
+.sales-table .expand-btn svg { transition: transform 0.15s ease; }
+.sales-table .expand-btn[aria-expanded="true"] svg { transform: rotate(180deg); }
+.sales-table .expand-btn[aria-expanded="true"] { background: #eef2ff; border-color: #274bc4; color: #274bc4; }
+.sales-table .sale-row.is-open td { background: #f5f7ff; }
+.sales-table .sale-items-row > td { background: #fafbfd; padding: 0.6rem 0.8rem 0.9rem; }
+.sales-table .sale-items { width: 100%; min-width: 0; border: 1px solid #e3e7ee; border-radius: 0.5rem; background: #fff; font-size: 0.85rem; }
+.sales-table .sale-items th { font-size: 0.72rem; padding: 0.35rem 0.6rem; }
+.sales-table .sale-items td { padding: 0.35rem 0.6rem; white-space: normal; }

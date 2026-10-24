@@ -6,7 +6,7 @@ import { requirePosProfile } from "@/lib/auth/server";
 import { posClient, money } from "@/lib/pos/server";
 import LiveFilterForm from "@/app/components/live-filter-form";
 import { Notice } from "@/app/components/pos-forms";
-import { ReturnStatusBadge } from "@/app/components/return-status-badge";
+import SalesTable, { type SalesTableRow } from "@/app/components/sales-table";
 import { loadReturnStatuses } from "@/lib/pos/return-status-load";
 
 export const dynamic = "force-dynamic";
@@ -239,6 +239,46 @@ export default async function SalesPage({
 
   const returnStatuses = data?.length ? await loadReturnStatuses(client, data.map((sale) => sale.id)) : new Map();
 
+  const saleIds = data?.map((sale) => sale.id) ?? [];
+  const { data: itemRows } = saleIds.length
+    ? await client
+        .from("pos_sale_items")
+        .select("sale_id,line_number,sku,product_name,variant_name,quantity,final_unit_price,line_total")
+        .in("sale_id", saleIds)
+        .order("line_number")
+    : { data: [] };
+  const itemsBySale = new Map<string, SalesTableRow["items"]>();
+  for (const item of itemRows ?? []) {
+    const list = itemsBySale.get(item.sale_id) ?? [];
+    list.push({
+      name: item.variant_name ? `${item.product_name} — ${item.variant_name}` : item.product_name,
+      sku: item.sku ?? "",
+      qty: String(Number(item.quantity)),
+      price: money(item.final_unit_price),
+      total: money(item.line_total),
+    });
+    itemsBySale.set(item.sale_id, list);
+  }
+  const tableRows: SalesTableRow[] = (data ?? []).map((sale) => {
+    const created = new Date(sale.created_at);
+    return {
+      id: sale.id,
+      number: sale.sale_number,
+      day: created.toLocaleDateString("ka-GE", { timeZone: "Asia/Tbilisi" }),
+      time: created.toLocaleTimeString("ka-GE", { timeZone: "Asia/Tbilisi", hour: "2-digit", minute: "2-digit" }),
+      cashier: sale.cashier_name,
+      wholesale: sale.sale_type === "wholesale",
+      customer: sale.customer_name ?? "—",
+      tracking: sale.tracking_code ?? "",
+      total: money(sale.total),
+      paid: money(sale.paid_total),
+      debt: money(sale.debt_amount),
+      hasDebt: Number(sale.debt_amount) > 0,
+      returnStatus: returnStatuses.get(sale.id) ?? "none",
+      items: itemsBySale.get(sale.id) ?? [],
+    };
+  });
+
   return (
     <>
       <h1>ტრანზაქციები</h1>
@@ -361,81 +401,7 @@ export default async function SalesPage({
           )}
         </div>
 
-        <div className="table-scroll">
-          <table className="ledger-table">
-            <thead>
-              <tr>
-                <th>№</th>
-                <th>თარიღი</th>
-                <th>მოლარე</th>
-                <th>კლიენტი</th>
-                <th>თრექინგი</th>
-                <th className="num">სულ</th>
-                <th className="num">გადახდილი</th>
-                <th className="num">დავალიანება</th>
-                <th>დაბრუნება</th>
-                <th><span className="sr-only">მოქმედება</span></th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {data?.map((sale) => {
-                const created = new Date(sale.created_at);
-                const debt = Number(sale.debt_amount);
-
-                return (
-                  <tr key={sale.id}>
-                    <td>
-                      <Link href={`/sales/${sale.id}`} className="row-id">
-                        #{sale.sale_number}
-                      </Link>
-                    </td>
-
-                    <td>
-                      <span className="cell-two">
-                        {created.toLocaleDateString("ka-GE", { timeZone: "Asia/Tbilisi" })}
-                        <small>
-                          {created.toLocaleTimeString("ka-GE", { timeZone: "Asia/Tbilisi", hour: "2-digit", minute: "2-digit" })}
-                        </small>
-                      </span>
-                    </td>
-
-                    <td>{sale.cashier_name}</td>
-
-                    <td>
-                      {sale.sale_type === "wholesale" ? (
-                        <span className="cell-two">
-                          {sale.customer_name ?? "—"}
-                          <small>საბითუმო</small>
-                        </span>
-                      ) : (
-                        <span className="muted">საცალო</span>
-                      )}
-                    </td>
-
-                    <td>{sale.tracking_code ? <span className="code">{sale.tracking_code}</span> : <span className="muted">—</span>}</td>
-
-                    <td className="num">
-                      <strong>{money(sale.total)}</strong>
-                    </td>
-
-                    <td className="num">{money(sale.paid_total)}</td>
-
-                    <td className={debt > 0 ? "num text-neg" : "num muted"}>{money(sale.debt_amount)}</td>
-
-                    <td><ReturnStatusBadge status={returnStatuses.get(sale.id) ?? "none"} /></td>
-
-                    <td className="row-action">
-                      <Link href={`/sales/${sale.id}`} className="row-link">
-                        დეტალები
-                      </Link>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <SalesTable rows={tableRows} />
 
         {pageCount > 1 && (
           <nav className="pager" aria-label="გვერდები">

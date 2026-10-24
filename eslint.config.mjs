@@ -12,7 +12,7 @@ const compat = new FlatCompat({
 });
 
 const config = [
-  { ignores: [".next/**", "out/**", "build/**", "next-env.d.ts"] },
+  { ignores: [".next/**", "out/**", "build/**", "next-env.d.ts", ".claude/**", ".agents/**"] },
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   // Destructuring fields away intentionally is not an unused-variable defect.
   { rules: { "@typescript-eslint/no-unused-vars": ["warn", { ignoreRestSiblings: true }] } },
