@@ -169,6 +169,13 @@ export default async function SaleDetailsPage({
         <span>{sale.tracking_code}</span>
       </div>
     )}
+
+    {sale.warranty_code && (
+      <div>
+        <span>საგარანტიო:</span>
+        <span>{sale.warranty_code}</span>
+      </div>
+    )}
   </div>
 
   <div className="receipt-divider" />
@@ -287,6 +294,9 @@ export default async function SaleDetailsPage({
 
               <dt>ტრეკინგი</dt>
               <dd>{sale.tracking_code ?? "—"}</dd>
+
+              <dt>საგარანტიო კოდი</dt>
+              <dd>{sale.warranty_code ?? "—"}</dd>
             </dl>
           </section>
 

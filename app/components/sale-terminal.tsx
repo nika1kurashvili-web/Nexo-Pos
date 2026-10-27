@@ -134,14 +134,18 @@ function SaleTerminalCore({
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [trackingCode, setTrackingCode] = useState("");
+  const [warrantyCode, setWarrantyCode] = useState("");
   // მხოლოდ არჩეული კლიენტის ფასები იტვირთება (არა ყველა კლიენტის ერთად).
   const [customerPrices, setCustomerPrices] = useState<CustomerPrice[]>([]);
   const [pricesStatus, setPricesStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const priceRequest = useRef(0);
   const deferredSearch = useDeferredValue(search);
 
+  // ძირითადად OnWay-ის შეკვეთებია, ამიტომ ის არის ნაგულისხმევი (შეიძლება შეიცვალოს).
   const defaultMethod =
-    paymentMethods.find((method) => !method.isDebt)?.code ?? "";
+    paymentMethods.find((method) => !method.isDebt && (method.code === "onway" || method.name.toLowerCase() === "onway"))?.code ??
+    paymentMethods.find((method) => !method.isDebt)?.code ??
+    "";
 
   const [payments, setPayments] = useState<PaymentRow[]>([
     {
@@ -1143,6 +1147,16 @@ function SaleTerminalCore({
             />
           </label>
 
+          <label className="till-field">
+            <span>საგარანტიო კოდი</span>
+            <input
+              value={warrantyCode}
+              onChange={(event) => setWarrantyCode(event.target.value)}
+              maxLength={200}
+              placeholder="თუ პროდუქტი საგარანტიოა"
+            />
+          </label>
+
           {canBackdate && today && (
             <label className="till-field">
               <span>გაყიდვის თარიღი</span>
@@ -1172,6 +1186,7 @@ function SaleTerminalCore({
           <input type="hidden" name="items" value={payload} />
           <input type="hidden" name="payments" value={paymentPayload} />
           <input type="hidden" name="tracking_code" value={trackingCode} />
+          <input type="hidden" name="warranty_code" value={warrantyCode} />
           <input
             type="hidden"
             name="sale_date"

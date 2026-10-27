@@ -21,6 +21,8 @@ export async function submitSale(input: Record<string, unknown>): Promise<SaleRe
   const customer = str(input.customer_id) || null;
   const tracking = str(input.tracking_code) || null;
   const saleDate = str(input.sale_date);
+  const warranty = str(input.warranty_code);
+  if (warranty.length > 200) return { ok: false, error: "invalid" };
 
   if (
     !uuid(requestId) ||
@@ -47,7 +49,7 @@ export async function submitSale(input: Record<string, unknown>): Promise<SaleRe
   if (saleType === "retail" && payments.length === 0) return { ok: false, error: "invalid" };
 
   const client = await rpcClient();
-  const { error } = await client.rpc("pos_complete_sale", {
+  const args = {
     p_request: requestId,
     p_session: session,
     p_type: saleType,
@@ -56,7 +58,11 @@ export async function submitSale(input: Record<string, unknown>): Promise<SaleRe
     p_items: items,
     p_payments: payments,
     p_date: saleDate || null,
-  });
+  };
+  // საგარანტიო კოდის გარეშე ძველი ფუნქცია გამოიყენება (მიგრაციამდეც მუშაობს).
+  const { error } = warranty
+    ? await client.rpc("pos_complete_sale_warranty", { ...args, p_warranty: warranty })
+    : await client.rpc("pos_complete_sale", args);
 
   if (error) {
     console.error("[nexo-pos-sale]", safeAuthError(error));

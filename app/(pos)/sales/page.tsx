@@ -22,6 +22,7 @@ type SearchParams = {
   product?: string;
   payment?: string;
   tracking?: string;
+  warranty?: string;
   page?: string;
 };
 
@@ -44,6 +45,7 @@ export default async function SalesPage({
   const product = params.product?.trim() ?? "";
   const payment = params.payment?.trim() ?? "";
   const tracking = (params.tracking?.trim() ?? "").slice(0, 200);
+  const warranty = (params.warranty?.trim() ?? "").slice(0, 200);
   const pageNumber = Math.max(1, Math.floor(Number(params.page)) || 1);
 
   const type =
@@ -171,6 +173,14 @@ export default async function SalesPage({
     query = query.ilike("tracking_code", `%${safeTracking}%`);
   }
 
+  if (warranty) {
+    const safeWarranty = warranty
+      .replaceAll(/[,()"\\]/g, " ")
+      .replaceAll("%", "\\%")
+      .replaceAll("_", "\\_");
+    query = query.ilike("warranty_code", `%${safeWarranty}%`);
+  }
+
   if (type) {
     query = query.eq("sale_type", type);
   }
@@ -237,6 +247,10 @@ export default async function SalesPage({
   const firstShown = total === 0 ? 0 : (pageNumber - 1) * PAGE_SIZE + 1;
   const lastShown = Math.min(total, pageNumber * PAGE_SIZE);
 
+  if (warranty && data?.length === 1 && data[0].warranty_code?.trim().toLowerCase() === warranty.toLowerCase()) {
+    redirect(`/sales/${data[0].id}`);
+  }
+
   const returnStatuses = data?.length ? await loadReturnStatuses(client, data.map((sale) => sale.id)) : new Map();
 
   const saleIds = data?.map((sale) => sale.id) ?? [];
@@ -270,6 +284,7 @@ export default async function SalesPage({
       wholesale: sale.sale_type === "wholesale",
       customer: sale.customer_name ?? "—",
       tracking: sale.tracking_code ?? "",
+      warranty: sale.warranty_code ?? "",
       total: money(sale.total),
       paid: money(sale.paid_total),
       debt: money(sale.debt_amount),
@@ -302,6 +317,17 @@ export default async function SalesPage({
               defaultValue={tracking}
               autoComplete="off"
               autoFocus
+            />
+          </label>
+
+          <label>
+            საგარანტიო კოდი
+            <input
+              name="warranty"
+              type="search"
+              placeholder="საგარანტიო კოდი"
+              defaultValue={warranty}
+              autoComplete="off"
             />
           </label>
 

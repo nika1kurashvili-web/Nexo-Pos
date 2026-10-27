@@ -186,6 +186,7 @@ export async function completeSale(form: FormData) {
   const tracking = optional(form, "tracking_code");
   // თარიღი არასავალდებულოა (მხოლოდ ადმინისთვის): ცარიელი = ახლა.
   const saleDate = text(form, "sale_date");
+  const warranty = text(form, "warranty_code").slice(0, 200);
 
   if (
     !uuid(requestId) ||
@@ -240,20 +241,20 @@ export async function completeSale(form: FormData) {
     redirect("/sales/new?error=invalid");
   }
 
-  const { error } = await client.rpc(
-    "pos_complete_sale",
-    {
-      p_request: requestId,
-      p_session: session,
-      p_type: saleType,
-      p_customer:
-        saleType === "wholesale" ? customer : null,
-      p_tracking: tracking,
-      p_items: items,
-      p_payments: payments,
-      p_date: saleDate || null,
-    }
-  );
+  const saleArgs = {
+    p_request: requestId,
+    p_session: session,
+    p_type: saleType,
+    p_customer: saleType === "wholesale" ? customer : null,
+    p_tracking: tracking,
+    p_items: items,
+    p_payments: payments,
+    p_date: saleDate || null,
+  };
+
+  const { error } = warranty
+    ? await client.rpc("pos_complete_sale_warranty", { ...saleArgs, p_warranty: warranty })
+    : await client.rpc("pos_complete_sale", saleArgs);
 
   if (error) {
     console.error(

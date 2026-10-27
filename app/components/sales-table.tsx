@@ -15,6 +15,7 @@ export type SalesTableRow = {
   wholesale: boolean;
   customer: string;
   tracking: string;
+  warranty: string;
   total: string;
   paid: string;
   debt: string;
@@ -58,6 +59,7 @@ export default function SalesTable({ rows }: { rows: SalesTableRow[] }) {
               <th>მოლარე</th>
               <th>კლიენტი</th>
               <th>თრექინგი</th>
+              <th>საგარანტიო</th>
               <th className="num">სულ</th>
               <th className="num">გადახდილი</th>
               <th className="num">დავალიანება</th>
@@ -105,6 +107,7 @@ export default function SalesTable({ rows }: { rows: SalesTableRow[] }) {
                       )}
                     </td>
                     <td>{row.tracking ? <span className="code">{row.tracking}</span> : <span className="muted">—</span>}</td>
+                    <td>{row.warranty ? <span className="code">{row.warranty}</span> : <span className="muted">—</span>}</td>
                     <td className="num"><strong>{row.total}</strong></td>
                     <td className="num">{row.paid}</td>
                     <td className={row.hasDebt ? "num text-neg" : "num muted"}>{row.debt}</td>
@@ -116,7 +119,7 @@ export default function SalesTable({ rows }: { rows: SalesTableRow[] }) {
                   {isOpen && (
                     <tr className="sale-items-row">
                       <td></td>
-                      <td colSpan={10}>
+                      <td colSpan={11}>
                         {row.items.length === 0 ? (
                           <span className="muted">პროდუქტები ვერ მოიძებნა.</span>
                         ) : (
