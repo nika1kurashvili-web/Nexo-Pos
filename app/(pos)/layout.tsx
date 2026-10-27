@@ -4,6 +4,7 @@ import { roleLabels } from "@/lib/auth/access";
 import { logout } from "@/app/login/actions";
 import { SubmitButton } from "@/app/components/submit-button";
 import PosNavigation from "@/app/components/pos-navigation";
+import OfflineSync from "@/app/components/offline-sync";
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +51,8 @@ export default async function PosLayout({
       <main id="main" className="main-content">
         {children}
       </main>
+
+      <OfflineSync />
     </div>
   );
 }

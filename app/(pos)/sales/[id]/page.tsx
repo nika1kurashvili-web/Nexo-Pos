@@ -7,15 +7,24 @@ import type { PosReturnItem } from "@/lib/pos/types";
 import { ReceiptPrintButton } from "@/app/components/receipt-print-button";
 import { ReturnStatusBadge } from "@/app/components/return-status-badge";
 import { computeReturnStatus } from "@/lib/pos/return-status";
+import { deleteSale } from "./actions";
 
 export const dynamic = "force-dynamic";
 
+const deleteErrors: Record<string, string> = {
+  confirm: "გაყიდვის ნომერი არასწორად ჩაწერეთ, წაშლა არ შესრულებულა.",
+  delete: "გაყიდვა ვერ წაიშალა. გადაამოწმეთ, გაშვებულია თუ არა მიგრაცია 202610270001 Supabase-ში.",
+};
+
 export default async function SaleDetailsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ error?: string }>;
 }) {
-  await requirePosProfile();
+  const profile = await requirePosProfile();
+  const { error: pageError } = await searchParams;
 
   const { id } = await params;
   const client = await posClient();
@@ -104,6 +113,8 @@ export default async function SaleDetailsPage({
         გაყიდვა №{sale?.sale_number}{" "}
         <ReturnStatusBadge status={computeReturnStatus(items ?? [], returnItems)} />
       </h1>
+
+      {pageError && deleteErrors[pageError] && <p className="notice error" role="alert">{deleteErrors[pageError]}</p>}
 
       <Notice loadError={Boolean(saleError || itemsError || paymentsError || returnsError || returnItemsError)} />
 
@@ -474,6 +485,29 @@ export default async function SaleDetailsPage({
               )}
             </dl>
           </section>
+
+          {profile.role === "admin" && (
+            <section className="panel danger-zone">
+              <details>
+                <summary><strong>გაყიდვის წაშლა (მხოლოდ ადმინი)</strong></summary>
+                <p>
+                  წაიშლება გაყიდვა №{sale.sale_number} სრულად: პროდუქტები, გადახდები, დაბრუნებები და დავალიანების
+                  ჩანაწერები. მარაგი და სალაროს თანხა ისე დაბრუნდება, თითქოს ეს გაყიდვა არ ყოფილა.
+                  ეს ქმედება სამუდამოა და ვერ გაუქმდება. დახურული ცვლის შენახული ანგარიში არ იცვლება.
+                </p>
+                <form action={deleteSale} className="data-form">
+                  <input type="hidden" name="id" value={sale.id} />
+                  <label>
+                    დასადასტურებლად ჩაწერეთ გაყიდვის ნომერი ({sale.sale_number})
+                    <input name="confirm" inputMode="numeric" autoComplete="off" required />
+                  </label>
+                  <div>
+                    <button type="submit" className="button danger">სამუდამოდ წაშლა</button>
+                  </div>
+                </form>
+              </details>
+            </section>
+          )}
         </>
       )}
     </>

@@ -1,8 +1,10 @@
 "use client";
 
-import { useDeferredValue, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useRouter } from "next/navigation";
 import { useFormStatus } from "react-dom";
 import { completeSale, loadCustomerPrices } from "@/app/(pos)/actions";
+import { enqueue, readQueue, sendSale, type SaleFields } from "@/lib/pos/offline-queue";
 import "./sale-terminal.css";
 
 type CatalogItem = {
@@ -66,14 +68,53 @@ const moneyInput = (value: string) => value.replace(/^0+(?=\d)/, "");
 const round2 = (value: number) =>
   Math.round((value + Number.EPSILON) * 100) / 100;
 
-function SaleSubmit({ disabled, children }: { disabled: boolean; children: React.ReactNode }) {
+function SaleSubmit({ disabled, busy, children }: { disabled: boolean; busy: boolean; children: React.ReactNode }) {
   const { pending } = useFormStatus();
-  return <button type="submit" className="till-cta" disabled={disabled || pending} aria-busy={pending || undefined}>
-    {pending ? "ინახება…" : children}
+  const working = pending || busy;
+  return <button type="submit" className="till-cta" disabled={disabled || working} aria-busy={working || undefined}>
+    {working ? "ინახება…" : children}
   </button>;
 }
 
-export default function SaleTerminal({
+type QueueReason = "offline" | "network" | "auth";
+
+// გარსი: ინტერნეტის გარეშე გაფორმებულ გაყიდვას რიგში ინახავს და ტერმინალს ასუფთავებს.
+export default function SaleTerminal(props: Props) {
+  const [epoch, setEpoch] = useState(0);
+  const [requestId, setRequestId] = useState(props.requestId);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  // შენახული გვერდის ძველი request_id უკვე რიგშია? მაშინ ახალს ვიყენებთ.
+  useEffect(() => {
+    if (readQueue().some((sale) => sale.id === props.requestId)) setRequestId(crypto.randomUUID());
+  }, [props.requestId]);
+
+  function onQueued(fields: SaleFields, total: number, reason: QueueReason) {
+    enqueue({ id: fields.request_id, createdAt: Date.now(), total, fields, status: "pending" });
+    setNotice(
+      reason === "auth"
+        ? "სესია ამოიწურა: გაყიდვა შენახულია კომპიუტერში. გადით და თავიდან შედით, მერე ავტომატურად გაიგზავნება."
+        : reason === "network"
+          ? "სერვერთან კავშირი ვერ მოხერხდა: გაყიდვა შენახულია კომპიუტერში და ინტერნეტის დაბრუნებისას ავტომატურად გაიგზავნება."
+          : "ინტერნეტი არ არის: გაყიდვა შენახულია კომპიუტერში და ინტერნეტის დაბრუნებისას ავტომატურად გაიგზავნება.",
+    );
+    setRequestId(crypto.randomUUID());
+    setEpoch((value) => value + 1);
+  }
+
+  return (
+    <>
+      {notice && (
+        <p className="notice success offline-notice" role="status">
+          {notice}
+        </p>
+      )}
+      <SaleTerminalCore key={epoch} {...props} requestId={requestId} onQueued={onQueued} />
+    </>
+  );
+}
+
+function SaleTerminalCore({
   items,
   paymentMethods,
   sessionId,
@@ -81,7 +122,10 @@ export default function SaleTerminal({
   customers,
   canBackdate = false,
   today = "",
-}: Props) {
+  onQueued,
+}: Props & { onQueued: (fields: SaleFields, total: number, reason: QueueReason) => void }) {
+  const router = useRouter();
+  const [sending, setSending] = useState(false);
   const [saleDate, setSaleDate] = useState(today);
   const [saleType, setSaleType] =
     useState<"retail" | "wholesale">("retail");
@@ -558,6 +602,42 @@ export default function SaleTerminal({
       ? remaining === 0 &&
         validPayments.length > 0
       : Boolean(customerId));
+
+  // გაგზავნა JSON-ით: თუ ინტერნეტი/სერვერი არ არის, გაყიდვა კომპიუტერში ინახება.
+  async function submitSale(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!canSubmit || sending) return;
+    const fields: SaleFields = {};
+    new FormData(event.currentTarget).forEach((value, key) => {
+      fields[key] = String(value);
+    });
+
+    if (navigator.onLine === false) {
+      // ახალი ნომერი, რომ შენახულ გვერდზე ძველი request_id არ განმეორდეს.
+      fields.request_id = crypto.randomUUID();
+      onQueued(fields, total, "offline");
+      return;
+    }
+
+    setSending(true);
+    const outcome = await sendSale(fields);
+    if (outcome.kind === "ok") {
+      router.replace("/sales/new?saved=1");
+      window.setTimeout(() => setSending(false), 8000);
+      return;
+    }
+    if (outcome.kind === "rejected") {
+      const target =
+        outcome.error === "date" || outcome.error === "invalid"
+          ? `/sales/new?error=${outcome.error}`
+          : `/sales/new?error=failed&request=${fields.request_id}`;
+      router.replace(target);
+      window.setTimeout(() => setSending(false), 8000);
+      return;
+    }
+    setSending(false);
+    onQueued(fields, total, outcome.kind);
+  }
 
 
   // ჩეკის ჯამები: რამდენი ცალია და რამდენი დააკლდა ფასდაკლებით.
@@ -1084,7 +1164,7 @@ export default function SaleTerminal({
           </p>
         )}
 
-        <form action={completeSale} className="till-submit">
+        <form action={completeSale} onSubmit={submitSale} className="till-submit">
           <input type="hidden" name="request_id" value={requestId} />
           <input type="hidden" name="session_id" value={sessionId} />
           <input type="hidden" name="sale_type" value={saleType} />
@@ -1098,7 +1178,7 @@ export default function SaleTerminal({
             value={canBackdate && saleDate !== today ? saleDate : ""}
           />
 
-          <SaleSubmit disabled={!canSubmit}>
+          <SaleSubmit disabled={!canSubmit} busy={sending}>
             <span>
               {saleType === "retail"
                 ? "გაყიდვის დასრულება"
