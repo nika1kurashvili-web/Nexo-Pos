@@ -15,7 +15,7 @@
   --control: #d1d5db;
   --ink: #111418;
   --muted-ink: #5f6368;
-  --primary-fill: #1d1f20;
+  --primary-fill: #274bc4;
   --hue: #274bc4;
   --hue-soft: rgba(39, 75, 196, 0.16);
   --pos-bg: #dcfae5; --pos-ink: #04250e; --pos-text: #247b50;
@@ -84,7 +84,7 @@ p, .muted { color: var(--muted-ink); }
 }
 .sidebar .sidebar-primary .nav-icon,
 .sidebar .sidebar-primary.active .nav-icon { color: #fff; }
-.sidebar .sidebar-primary:hover { background: #000; color: #fff; }
+.sidebar .sidebar-primary:hover { background: #1d3ca5; color: #fff; }
 .sidebar-admin-group { border-top: 1px solid var(--line); margin-top: 0.75rem; padding-top: 0.75rem; }
 .sidebar-section-title {
   padding: 0 0.75rem 0.375rem; color: var(--muted-ink);
@@ -132,7 +132,7 @@ p, .muted { color: var(--muted-ink); }
   box-shadow: none; text-decoration: none;
 }
 .button.primary, .primary.button { margin-top: 0; background: var(--primary-fill); color: #fff; border-color: var(--primary-fill); box-shadow: none; }
-.button.primary:hover:not(:disabled) { background: #000; }
+.button.primary:hover:not(:disabled) { background: #1d3ca5; }
 .button.secondary { background: var(--surface); color: var(--ink); border-color: var(--control); box-shadow: none; }
 .button.secondary:hover:not(:disabled) { background: var(--raised); border-color: #9ca3af; }
 .button:disabled, .button.disabled { opacity: 1; background: var(--well); color: #6b6b6b; border-color: var(--line); cursor: not-allowed; }
@@ -355,7 +355,7 @@ tbody tr:first-child .share-bar { background: var(--ink); }
 .range-arrow { display: inline-grid; place-items: center; width: 2.5rem; height: 2.5rem; border: 1px solid var(--control); border-radius: var(--r-control); background: var(--surface); color: var(--ink); font-size: 1.1rem; }
 .range-arrow:hover { background: var(--raised); }
 .range-apply { min-height: 2.5rem; padding: 0 1rem; border: 0; border-radius: var(--r-control); background: var(--primary-fill); color: #fff; font: inherit; font-weight: 600; box-shadow: none; }
-.range-apply:hover { background: #000; }
+.range-apply:hover { background: #1d3ca5; }
 .profit-presets { display: flex; flex-wrap: wrap; gap: 0.375rem; margin-left: auto; }
 .reason-chip { padding: 0.3rem 0.75rem; border: 1px solid var(--control); border-radius: 999px; background: var(--surface); color: #3c4043; font-size: max(12px, 0.875rem); font-weight: 500; box-shadow: none; }
 .reason-chip:hover { border-color: #9ca3af; color: var(--ink); background: var(--raised); }
@@ -443,7 +443,7 @@ tbody tr:first-child .share-bar { background: var(--ink); }
 .profit-range .range-arrow { width: 2.5rem; height: 2.5rem; border-color: var(--control); border-radius: var(--r-control); color: var(--ink); }
 .profit-range .range-arrow:hover { border-color: #9ca3af; color: var(--ink); background: var(--raised); }
 .profit-range .range-apply { height: 2.5rem; border-radius: var(--r-control); background: var(--primary-fill); font-size: max(13px, 0.9375rem); }
-.profit-range .range-apply:hover { background: #000; }
+.profit-range .range-apply:hover { background: #1d3ca5; }
 .profit-tabs { padding: 3px; background: #e9ebee; border-radius: var(--r-card); gap: 3px; }
 .panel.profit-bar .profit-tabs a, .profit-tabs a { padding: 0.4rem 0.9rem; border-radius: var(--r-control); font-size: max(13px, 0.9375rem); color: #3c4043; }
 .profit-tabs a.on { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: none; border-color: var(--control); }
