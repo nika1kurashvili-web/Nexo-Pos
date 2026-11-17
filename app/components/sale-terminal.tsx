@@ -141,9 +141,13 @@ function SaleTerminalCore({
   const priceRequest = useRef(0);
   const deferredSearch = useDeferredValue(search);
 
-  // ძირითადად OnWay-ის შეკვეთებია, ამიტომ ის არის ნაგულისხმევი (შეიძლება შეიცვალოს).
+  // ნაგულისხმევი გადახდის მეთოდია EASY (შეიძლება შეიცვალოს).
+  // თუ EASY ვერ მოიძებნა, ვიყენებთ OnWay-ს, შემდეგ პირველ არაგალიან მეთოდს.
+  const isMethod = (method: PaymentMethod, key: string) =>
+    !method.isDebt && (method.code.toLowerCase() === key || method.name.toLowerCase() === key);
   const defaultMethod =
-    paymentMethods.find((method) => !method.isDebt && (method.code === "onway" || method.name.toLowerCase() === "onway"))?.code ??
+    paymentMethods.find((method) => isMethod(method, "easy"))?.code ??
+    paymentMethods.find((method) => isMethod(method, "onway"))?.code ??
     paymentMethods.find((method) => !method.isDebt)?.code ??
     "";
 
