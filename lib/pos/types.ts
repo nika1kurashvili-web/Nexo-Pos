@@ -48,7 +48,7 @@ export type ReturnSaleDetails = {
 } | null;
 export type PosPurchase = { id: string; purchase_number: number; request_id: string; request_fingerprint: string; actor_id: string; actor_name: string; note: string | null; items_count: number; total: Decimal; created_at: string };
 export type PosPurchaseItem = { id: string; purchase_id: string; line_number: number; target_kind: "product" | "variant"; product_id: string | null; variant_id: string | null; sku: string | null; product_name: string; variant_name: string | null; quantity: Decimal; unit_price: Decimal; previous_price: Decimal | null; line_total: Decimal };
-export type PosPurchaseHistory = { id: string; purchase_id: string; actor_id: string; actor_name: string; changes: Json; total_before: Decimal; total_after: Decimal; created_at: string };
+export type PosPurchaseHistory = { id: string; purchase_id: string; purchase_number: number | null; action: "edit" | "delete"; actor_id: string; actor_name: string; changes: Json; total_before: Decimal; total_after: Decimal; created_at: string };
 export type PosInventory = { id: string; inventory_number: number; request_id: string; request_fingerprint: string; actor_id: string; actor_name: string; note: string | null; items_count: number; created_at: string };
 export type PosInventoryItem = { id: string; inventory_id: string; line_number: number; target_kind: "product" | "variant"; product_id: string | null; variant_id: string | null; sku: string | null; product_name: string; variant_name: string | null; system_quantity: Decimal; counted_quantity: Decimal; difference: Decimal; reason: string };
 export type PosStockMovement = { id: string; kind: "sale" | "return" | "purchase" | "inventory"; target_kind: "product" | "variant"; product_id: string | null; variant_id: string | null; sku: string | null; product_name: string; variant_name: string | null; quantity_change: Decimal; document_id: string; created_at: string };
@@ -124,6 +124,7 @@ export type PosFunctions = {
   pos_rename_product: { Args: { p_kind: string; p_id: string; p_name: string | null; p_sku: string | null }; Returns: undefined };
   pos_update_product: { Args: { p_kind: string; p_id: string; p_price: string | null; p_active: boolean | null }; Returns: undefined };
   pos_inventory_catalog: { Args: Record<string, never>; Returns: InventoryCatalogItem[] };
+  pos_delete_purchase: { Args: { p_purchase: string }; Returns: undefined };
   pos_edit_purchase: { Args: { p_purchase: string; p_note: string | null; p_items: Json }; Returns: undefined };
   pos_create_purchase: { Args: { p_request: string; p_note: string | null; p_items: Json }; Returns: string };
   pos_create_inventory: { Args: { p_request: string; p_note: string | null; p_items: Json }; Returns: string };

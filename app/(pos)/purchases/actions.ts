@@ -141,3 +141,28 @@ export async function editPurchase(form: FormData) {
   revalidatePath("/inventories");
   redirect(`/purchases/${purchaseId}?edited=1`);
 }
+
+// ადმინი სრულად შლის შესყიდვას: მარაგი უბრუნდება ისე, თითქოს არ ყოფილა, ჩანაწერი რჩება ისტორიაში.
+// დასადასტურებლად უნდა ჩაიწეროს შესყიდვის ნომერი.
+export async function deletePurchase(form: FormData) {
+  await requireAdmin();
+  const id = String(form.get("id") ?? "").trim();
+  if (!uuidRe.test(id)) redirect("/purchases");
+
+  const client = await rpcClient();
+  const { data: purchase } = await client.from("pos_purchases").select("purchase_number").eq("id", id).maybeSingle();
+  if (!purchase) redirect("/purchases");
+
+  const typed = String(form.get("confirm") ?? "").trim().replace(/^#/, "");
+  if (typed !== String(purchase.purchase_number)) redirect(`/purchases/${id}?error=confirm`);
+
+  const { error } = await client.rpc("pos_delete_purchase", { p_purchase: id });
+  if (error) {
+    console.error("[nexo-pos-purchase-delete]", safeAuthError(error));
+    redirect(`/purchases/${id}?error=delete`);
+  }
+
+  revalidatePath("/purchases");
+  revalidatePath("/inventories");
+  redirect("/purchases?deleted=1");
+}

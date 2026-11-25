@@ -2,14 +2,19 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/auth/server";
 import { money, posClient } from "@/lib/pos/server";
+import { deletePurchase } from "../actions";
 
 export const dynamic = "force-dynamic";
 
 const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const qty = (v: string | number) => Number(v).toLocaleString("ka-GE", { maximumFractionDigits: 3 });
 
-type Change = { line?: number; sku?: string | null; name?: string; field: string; old: string | number | null; new: string | number | null };
-const fieldLabel: Record<string, string> = { quantity: "რაოდენობა", unit_price: "შესყიდვის ფასი", note: "შენიშვნა" };
+type Change = { line?: number; sku?: string | null; name?: string; field: string; old: string | number | null; new: string | number | null; price?: string | number | null };
+const deleteErrors: Record<string, string> = {
+  confirm: "შესყიდვის ნომერი არასწორად ჩაწერეთ, წაშლა არ შესრულებულა.",
+  delete: "შესყიდვა ვერ წაიშალა. გადაამოწმეთ, გაშვებულია თუ არა მიგრაცია 202611250002 Supabase-ში.",
+};
+const fieldLabel: Record<string, string> = { quantity: "რაოდენობა", unit_price: "შესყიდვის ფასი", note: "შენიშვნა", removed: "ამოღებულია" };
 const showValue = (field: string, value: string | number | null) => {
   if (value === null || value === "") return "—";
   if (field === "quantity") return qty(value);
@@ -22,11 +27,11 @@ export default async function PurchasePage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ saved?: string; edited?: string }>;
+  searchParams: Promise<{ saved?: string; edited?: string; error?: string }>;
 }) {
   await requireAdmin();
   const { id } = await params;
-  const { saved, edited } = await searchParams;
+  const { saved, edited, error: pageError } = await searchParams;
   if (!uuidRe.test(id)) notFound();
   const client = await posClient();
 
@@ -61,6 +66,7 @@ export default async function PurchasePage({
         </div>
       </div>
 
+      {pageError && <p className="notice error" role="alert">{deleteErrors[pageError] ?? deleteErrors.delete}</p>}
       {edited && <p className="notice success" role="status">ცვლილება შენახულია და ისტორიაში ჩაიწერა.</p>}
       {saved && <p className="notice success" role="status">შესყიდვა შენახულია, მარაგი და შესყიდვის ფასები განახლდა.</p>}
 
@@ -133,8 +139,16 @@ export default async function PurchasePage({
                         {changes.map((change, index) => (
                           <div key={index}>
                             {change.name ? `${change.sku ? `${change.sku} · ` : ""}${change.name}: ` : ""}
-                            {fieldLabel[change.field] ?? change.field}{" "}
-                            {showValue(change.field, change.old)} → <strong>{showValue(change.field, change.new)}</strong>
+                            {change.field === "removed" ? (
+                              <>
+                                {fieldLabel.removed}: {showValue("quantity", change.old)} × {showValue("unit_price", change.price ?? null)}
+                              </>
+                            ) : (
+                              <>
+                                {fieldLabel[change.field] ?? change.field}{" "}
+                                {showValue(change.field, change.old)} → <strong>{showValue(change.field, change.new)}</strong>
+                              </>
+                            )}
                           </div>
                         ))}
                       </td>
@@ -146,6 +160,27 @@ export default async function PurchasePage({
             </table>
           </div>
         )}
+      </section>
+
+      <section className="panel danger-zone">
+        <details>
+          <summary><strong>შესყიდვის წაშლა (მხოლოდ ადმინი)</strong></summary>
+          <p>
+            წაიშლება შესყიდვა №{purchase.purchase_number} სრულად. მარაგი ისე დაბრუნდება, თითქოს ეს შესყიდვა არ ყოფილა,
+            ხოლო პროდუქტების შესყიდვის ფასი დაუბრუნდება წინა შესყიდვის ფასს. ჩანაწერი დარჩება შესყიდვების გვერდზე
+            „წაშლილი შესყიდვები“-ში, ვინ და როდის წაშალა.
+          </p>
+          <form action={deletePurchase} className="data-form">
+            <input type="hidden" name="id" value={purchase.id} />
+            <label>
+              დასადასტურებლად ჩაწერეთ შესყიდვის ნომერი ({purchase.purchase_number})
+              <input name="confirm" inputMode="numeric" autoComplete="off" required />
+            </label>
+            <div>
+              <button type="submit" className="button danger">სამუდამოდ წაშლა</button>
+            </div>
+          </form>
+        </details>
       </section>
     </>
   );

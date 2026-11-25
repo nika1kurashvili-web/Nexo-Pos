@@ -30,25 +30,26 @@ export default function PurchaseEditForm({
   note: string;
 }) {
   const [rows, setRows] = useState(
-    initial.map((l) => ({ id: l.id, quantity: l.quantity, price: l.unit_price })),
+    initial.map((l) => ({ id: l.id, quantity: l.quantity, price: l.unit_price, removed: false })),
   );
   const [note, setNote] = useState(initialNote);
 
-  const update = (id: string, patch: Partial<{ quantity: string; price: string }>) =>
+  const update = (id: string, patch: Partial<{ quantity: string; price: string; removed: boolean }>) =>
     setRows((current) => current.map((r) => (r.id === id ? { ...r, ...patch } : r)));
 
-  const valid = rows.every((r) => isQuantity(r.quantity) && isPrice(r.price));
+  const kept = rows.filter((r) => !r.removed);
+  const valid = kept.length > 0 && kept.every((r) => isQuantity(r.quantity) && isPrice(r.price));
   const changed =
     note.trim() !== initialNote.trim() ||
-    rows.some((r, i) => !same(r.quantity, initial[i].quantity) || !samePrice(r.price, initial[i].unit_price));
+    rows.some((r, i) => r.removed || !same(r.quantity, initial[i].quantity) || !samePrice(r.price, initial[i].unit_price));
 
-  const total = rows.reduce((sum, r) => {
+  const total = kept.reduce((sum, r) => {
     if (!isQuantity(r.quantity) || !isPrice(r.price)) return sum;
     return sum + Number(normalizeDecimal(r.quantity)) * Number(normalizeDecimal(r.price));
   }, 0);
 
   const payload = JSON.stringify(
-    rows.map((r) => ({ id: r.id, quantity: r.quantity, unit_price: r.price })),
+    kept.map((r) => ({ id: r.id, quantity: r.quantity, unit_price: r.price })),
   );
 
   return (
@@ -67,6 +68,7 @@ export default function PurchaseEditForm({
                 <th>რაოდენობა</th>
                 <th>შესყიდვის ფასი (₾)</th>
                 <th>ჯამი</th>
+                <th />
               </tr>
             </thead>
             <tbody>
@@ -78,7 +80,7 @@ export default function PurchaseEditForm({
                 const qChanged = !same(r.quantity, l.quantity);
                 const pChanged = !samePrice(r.price, l.unit_price);
                 return (
-                  <tr key={r.id}>
+                  <tr key={r.id} style={r.removed ? { opacity: 0.5, textDecoration: "line-through" } : undefined}>
                     <td>{l.sku ?? ""}</td>
                     <td>{l.name}</td>
                     <td>
@@ -87,6 +89,7 @@ export default function PurchaseEditForm({
                         inputMode="decimal"
                         value={r.quantity}
                         onChange={(e) => update(r.id, { quantity: e.target.value })}
+                        disabled={r.removed}
                         aria-invalid={!okQ}
                         aria-label="რაოდენობა"
                       />
@@ -98,12 +101,24 @@ export default function PurchaseEditForm({
                         inputMode="decimal"
                         value={r.price}
                         onChange={(e) => update(r.id, { price: e.target.value })}
+                        disabled={r.removed}
                         aria-invalid={!okP}
                         aria-label="შესყიდვის ფასი"
                       />
                       {pChanged && <span className="muted"> იყო: {l.unit_price}</span>}
                     </td>
-                    <td>{line === null ? "—" : gel(line)}</td>
+                    <td>{line === null || r.removed ? "—" : gel(line)}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="button secondary"
+                        onClick={() => update(r.id, { removed: !r.removed })}
+                        aria-label={r.removed ? "დაბრუნება" : "პოზიციის ამოღება"}
+                        style={{ textDecoration: "none" }}
+                      >
+                        {r.removed ? "დაბრუნება" : "✕"}
+                      </button>
+                    </td>
                   </tr>
                 );
               })}
@@ -111,6 +126,11 @@ export default function PurchaseEditForm({
           </table>
         </div>
         <p><strong>სულ: {gel(total)}</strong></p>
+        {kept.length === 0 && (
+          <p className="notice error" role="alert">
+            ყველა პოზიცია ამოღებულია. მთელი შესყიდვის წასაშლელად გამოიყენეთ „შესყიდვის წაშლა“ შესყიდვის გვერდზე.
+          </p>
+        )}
         <label>
           შენიშვნა (არასავალდებულო)
           <input
@@ -127,7 +147,7 @@ export default function PurchaseEditForm({
           </button>
         </div>
         <p className="muted">
-          რაოდენობის შეცვლისას მარაგი შეიცვლება სხვაობით. შესყიდვის ფასი პროდუქტზე განახლდება მხოლოდ მაშინ,
+          პოზიციის ამოღებისას მისი მარაგი გამოაკლდება. რაოდენობის შეცვლისას მარაგი შეიცვლება სხვაობით. შესყიდვის ფასი პროდუქტზე განახლდება მხოლოდ მაშინ,
           თუ ეს ამ პროდუქტის ბოლო შესყიდვაა. ყოველი ცვლილება ჩაიწერება ისტორიაში.
         </p>
       </section>

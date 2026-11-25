@@ -9,7 +9,7 @@ const PAGE_SIZE = 50;
 export default async function PurchasesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; deleted?: string }>;
 }) {
   await requireAdmin();
   const client = await posClient();
@@ -47,6 +47,14 @@ export default async function PurchasesPage({
   }
   const pages = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE));
 
+  const { data: deletedRows } = await client
+    .from("pos_purchase_history")
+    .select("id,purchase_number,actor_name,total_before,created_at,changes")
+    .eq("action", "delete")
+    .order("created_at", { ascending: false })
+    .limit(30);
+  type RemovedLine = { sku?: string | null; name?: string; old?: string | number | null; price?: string | number | null };
+
   return (
     <>
       <div className="analytics-head">
@@ -59,6 +67,8 @@ export default async function PurchasesPage({
           მონაცემები ვერ ჩაიტვირთა. გადაამოწმეთ ინვენტარიზაციის მიგრაცია და წვდომა.
         </p>
       )}
+
+      {params.deleted && <p className="notice success" role="status">შესყიდვა წაიშალა, მარაგი დაბრუნდა.</p>}
 
       <section className="panel list-panel">
         <div className="list-head">
@@ -122,6 +132,44 @@ export default async function PurchasesPage({
           </div>
         )}
       </section>
+
+      {(deletedRows ?? []).length > 0 && (
+        <section className="panel">
+          <details>
+            <summary><strong>წაშლილი შესყიდვები ({(deletedRows ?? []).length})</strong></summary>
+            <div className="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>№</th>
+                    <th>როდის წაიშალა</th>
+                    <th>ვინ წაშალა</th>
+                    <th>რა იყო</th>
+                    <th>ჯამი</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(deletedRows ?? []).map((entry) => (
+                    <tr key={entry.id}>
+                      <td>#{entry.purchase_number ?? "—"}</td>
+                      <td>{new Date(entry.created_at).toLocaleString("ka-GE", { timeZone: "Asia/Tbilisi" })}</td>
+                      <td>{entry.actor_name}</td>
+                      <td>
+                        {((Array.isArray(entry.changes) ? entry.changes : []) as unknown as RemovedLine[]).map((line, index) => (
+                          <div key={index}>
+                            {line.name}: {Number(line.old).toLocaleString("ka-GE", { maximumFractionDigits: 3 })} × {money(line.price ?? 0)}
+                          </div>
+                        ))}
+                      </td>
+                      <td>{money(entry.total_before)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </details>
+        </section>
+      )}
     </>
   );
 }
