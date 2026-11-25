@@ -78,3 +78,66 @@ export async function createPurchase(form: FormData) {
   revalidatePath("/inventories");
   redirect(`/purchases/${data}?saved=1`);
 }
+
+const editErrorCodes: Record<string, string> = {
+  NO_CHANGES: "nochange",
+  INVALID_DECIMAL: "invalid",
+  INVALID_PURCHASE_ROWS: "invalid",
+  DUPLICATE_TARGET: "invalid",
+  INVALID_NOTE: "note",
+  PURCHASE_NOT_FOUND: "missing",
+};
+
+type RawEditItem = { id?: unknown; quantity?: unknown; unit_price?: unknown };
+
+export async function editPurchase(form: FormData) {
+  await requireAdmin();
+  const purchaseId = String(form.get("purchase_id") ?? "").trim();
+  const note = String(form.get("note") ?? "").trim();
+  if (!uuidRe.test(purchaseId)) redirect("/purchases");
+  const back = `/purchases/${purchaseId}/edit`;
+
+  if (note.length > 500) redirect(`${back}?error=note`);
+
+  let raw: unknown;
+  try {
+    raw = JSON.parse(String(form.get("items") ?? ""));
+  } catch {
+    redirect(`${back}?error=invalid`);
+  }
+  if (!Array.isArray(raw) || raw.length === 0 || raw.length > 500) {
+    redirect(`${back}?error=invalid`);
+  }
+
+  const items: { id: string; quantity: string; unit_price: string }[] = [];
+  for (const row of raw as RawEditItem[]) {
+    const quantity = String(row.quantity ?? "");
+    const price = String(row.unit_price ?? "");
+    if (typeof row.id !== "string" || !uuidRe.test(row.id) || !isQuantity(quantity) || !isPrice(price)) {
+      redirect(`${back}?error=invalid`);
+    }
+    items.push({
+      id: row.id as string,
+      quantity: normalizeDecimal(quantity),
+      unit_price: normalizeDecimal(price),
+    });
+  }
+
+  const client = await rpcClient();
+  const { error } = await client.rpc("pos_edit_purchase", {
+    p_purchase: purchaseId,
+    p_note: note || null,
+    p_items: items,
+  });
+
+  if (error) {
+    console.error("[nexo-pos-purchase-edit]", safeAuthError(error));
+    const known = editErrorCodes[error.message?.trim() ?? ""];
+    redirect(`${back}?error=${known ?? "failed"}`);
+  }
+
+  revalidatePath("/purchases");
+  revalidatePath(`/purchases/${purchaseId}`);
+  revalidatePath("/inventories");
+  redirect(`/purchases/${purchaseId}?edited=1`);
+}
